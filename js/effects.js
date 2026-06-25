@@ -20,6 +20,9 @@ function noteLabel(noteStr) {
   return jp + acc;
 }
 
+const LAYER_LABELS = ["", "+ ドラム !", "+ ストリングス !"];
+const LAYER_HUES   = [0, 200, 45];
+
 class EffectsEngine {
   constructor(canvas) {
     this.canvas = canvas;
@@ -31,6 +34,11 @@ class EffectsEngine {
 
     // Falling tile: the current note descending toward the hit zone
     this.fallingTile = null; // {notes, startTime, duration, hit, hitTime}
+
+    // Layer / combo display
+    this.combo       = 0;
+    this.layer       = 0;
+    this.layerBanner = null; // {text, hue, alpha, ticks}
 
     this._running = false;
     this._raf     = null;
@@ -103,6 +111,16 @@ class EffectsEngine {
     this.bgFlash = 0.15;
   }
 
+  // Called by game when the active layer changes.
+  setLayer(newLayer, combo, wasManual) {
+    const hue  = LAYER_HUES[newLayer] ?? 0;
+    const text = wasManual
+      ? LAYER_LABELS[newLayer]          // levelled up
+      : "コンボ切れ...";                 // dropped
+    this.layerBanner = { text, hue, alpha: 1.0, ticks: 110 };
+    this.bgFlash = wasManual ? 0.45 : 0.12;
+  }
+
   // Called for auto accompaniment — soft piano key glow only, no burst or label
   triggerAccomp(notes) {
     if (!notes || notes.length === 0) return;
@@ -149,6 +167,14 @@ class EffectsEngine {
     });
 
     if (this.bgFlash > 0) this.bgFlash -= 0.01;
+
+    if (this.layerBanner) {
+      this.layerBanner.ticks--;
+      if (this.layerBanner.ticks < 40) {
+        this.layerBanner.alpha -= 0.025;
+        if (this.layerBanner.alpha <= 0) this.layerBanner = null;
+      }
+    }
 
     // Expire hit tiles after their animation
     if (this.fallingTile?.hit) {
@@ -282,6 +308,61 @@ class EffectsEngine {
     });
 
     drawPiano(ctx, canvas.width, canvas.height, this.pianoGlow);
+
+    this._drawHUD();
+  }
+
+  _drawHUD() {
+    const { ctx, canvas } = this;
+
+    // Combo counter — top-right
+    if (this.combo > 0) {
+      const hue = this.layer >= 2 ? 45 : this.layer >= 1 ? 200 : 0;
+      ctx.save();
+      ctx.textAlign = "right";
+      ctx.font = "bold 18px monospace";
+      ctx.fillStyle = `hsl(${hue},80%,80%)`;
+      ctx.shadowBlur  = 12;
+      ctx.shadowColor = `hsl(${hue},80%,60%)`;
+      ctx.fillText(`COMBO ${this.combo}`, canvas.width - 24, 36);
+      ctx.restore();
+    }
+
+    // Layer dots — top-right below combo
+    const dotR = 7;
+    const dotY = 56;
+    for (let i = 0; i < 3; i++) {
+      const x   = canvas.width - 24 - (2 - i) * (dotR * 2 + 6);
+      const hue = LAYER_HUES[i + 1] ?? 0;
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(x, dotY, dotR, 0, Math.PI * 2);
+      if (i < this.layer) {
+        ctx.shadowBlur  = 14;
+        ctx.shadowColor = `hsl(${hue},90%,65%)`;
+        ctx.fillStyle   = `hsl(${hue},85%,65%)`;
+        ctx.fill();
+      } else {
+        ctx.strokeStyle = "rgba(180,180,180,0.35)";
+        ctx.lineWidth   = 1.5;
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    // Layer banner — centred, fades out
+    if (this.layerBanner) {
+      const b = this.layerBanner;
+      ctx.save();
+      ctx.globalAlpha = b.alpha;
+      ctx.textAlign   = "center";
+      ctx.font        = "bold 44px 'Hiragino Kaku Gothic Pro', sans-serif";
+      ctx.fillStyle   = `hsl(${b.hue},85%,82%)`;
+      ctx.shadowBlur  = 50;
+      ctx.shadowColor = `hsl(${b.hue},85%,55%)`;
+      ctx.fillText(b.text, canvas.width / 2, canvas.height * 0.34);
+      ctx.restore();
+    }
   }
 
   _loop() {

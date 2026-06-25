@@ -4,6 +4,14 @@ class AudioEngine {
     this.reverb = null;
     this.ready = false;
     this._loading = false;
+
+    // Drum / pad synths (initialised lazily on first game start)
+    this.kick  = null;
+    this.snare = null;
+    this.hihat = null;
+    this.pad   = null;
+    this.drumsReady    = false;
+    this._drumsLoading = false;
   }
 
   async init() {
@@ -61,6 +69,40 @@ class AudioEngine {
     });
   }
 
+  // Initialise drum & pad synths. Fire-and-forget; safe to call multiple times.
+  async initDrumsAndPad() {
+    if (this._drumsLoading || this.drumsReady) return;
+    this._drumsLoading = true;
+
+    const drumVerb = new Tone.Reverb({ decay: 0.9, wet: 0.18 });
+    const padVerb  = new Tone.Reverb({ decay: 3.5, wet: 0.45 });
+    await Promise.all([drumVerb.generate(), padVerb.generate()]);
+
+    this.kick = new Tone.MembraneSynth({
+      pitchDecay: 0.06, octaves: 5,
+      envelope: { attack: 0.001, decay: 0.18, sustain: 0, release: 0.12 },
+    }).connect(drumVerb).toDestination();
+
+    this.snare = new Tone.NoiseSynth({
+      noise: { type: "white" },
+      envelope: { attack: 0.001, decay: 0.10, sustain: 0, release: 0.04 },
+    }).connect(drumVerb).toDestination();
+
+    this.hihat = new Tone.MetalSynth({
+      frequency: 400,
+      envelope: { attack: 0.001, decay: 0.04, sustain: 0, release: 0.01 },
+      harmonicity: 5.1, modulationIndex: 32, resonance: 4000, octaves: 1.5,
+    }).connect(drumVerb).toDestination();
+
+    this.pad = new Tone.PolySynth(Tone.Synth, {
+      oscillator: { type: "triangle8" },
+      envelope: { attack: 0.35, decay: 0.2, sustain: 0.60, release: 2.5 },
+    }).connect(padVerb).toDestination();
+
+    this.drumsReady    = true;
+    this._drumsLoading = false;
+  }
+
   // Play a list of note strings simultaneously.
   // velocity: 0–1 (default 0.85 for melody, use ~0.40 for accompaniment)
   playNotes(notes, velocity = 0.85, duration = 1.8) {
@@ -69,10 +111,33 @@ class AudioEngine {
     notes.forEach((note) => {
       try {
         this.sampler.triggerAttackRelease(note, duration, now, velocity);
-      } catch (e) {
-        // ignore unrecognised note strings
-      }
+      } catch (e) {}
     });
+  }
+
+  playKick() {
+    if (!this.drumsReady) return;
+    this.kick.triggerAttackRelease("C1", "8n", Tone.now(), 0.75);
+  }
+
+  playSnare() {
+    if (!this.drumsReady) return;
+    this.snare.triggerAttackRelease("8n", Tone.now(), 0.55);
+  }
+
+  playHihat(velocity = 0.45) {
+    if (!this.drumsReady) return;
+    this.hihat.triggerAttackRelease("32n", Tone.now(), velocity);
+  }
+
+  // Play a chord on the pad synth; auto-releases after ~2 bars.
+  playPad(notes) {
+    if (!this.drumsReady || !notes || notes.length === 0) return;
+    try {
+      this.pad.releaseAll();
+      this.pad.triggerAttack(notes, Tone.now(), 0.28);
+      this.pad.triggerRelease(notes, Tone.now() + 2.2);
+    } catch (e) {}
   }
 
   isReady() {
