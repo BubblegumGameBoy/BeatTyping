@@ -7,63 +7,65 @@
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <div id="app">
+<div id="app">
 
-    <!-- ─── Title Screen ──────────────────────────────────────────────── -->
-    <div id="title-screen" class="screen">
-      <div style="text-align:center; display:flex; flex-direction:column; align-items:center; gap:32px;">
-        <div>
-          <h1 class="title">Typing Piano</h1>
-          <p class="subtitle">キーを押して名曲を演奏しよう</p>
-        </div>
-        <div id="song-list"></div>
-      </div>
+  <!-- Title Screen -->
+  <div id="title-screen" class="screen">
+    <div class="title-wrap">
+      <h1 class="title">Typing Piano</h1>
+      <p class="subtitle">キーを押して名曲を演奏しよう</p>
+      <div id="song-list"></div>
     </div>
-
-    <!-- ─── Play Screen ───────────────────────────────────────────────── -->
-    <div id="play-screen" class="screen">
-      <div class="play-header">
-        <div class="song-name" id="song-name-display"></div>
-        <div class="progress-bar-container">
-          <div class="progress-bar" id="progress-bar"></div>
-        </div>
-        <div class="progress-text" id="progress-text">0%</div>
-      </div>
-
-      <canvas id="effect-canvas"></canvas>
-
-      <div class="play-footer">
-        <span class="key-hint">任意のキーを押して演奏してください</span>
-        <button class="back-btn" id="back-btn">← 曲選択に戻る</button>
-      </div>
-    </div>
-
-    <!-- ─── Complete Screen ───────────────────────────────────────────── -->
-    <div id="complete-screen" class="screen">
-      <div class="complete-content">
-        <h2>演奏完了！</h2>
-        <p id="complete-song-name"></p>
-        <div class="complete-actions">
-          <button class="complete-btn" id="replay-btn">もう一度演奏</button>
-          <button class="complete-btn" id="select-btn">曲を選び直す</button>
-        </div>
-      </div>
-    </div>
-
-  </div><!-- #app -->
-
-  <!-- ─── Loading overlay ───────────────────────────────────────────────── -->
-  <div id="loading-overlay">
-    <div class="spinner"></div>
-    <p id="loading-msg">読み込み中…</p>
   </div>
 
-  <!-- ─── Scripts (order matters) ──────────────────────────────────────── -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
-  <script src="js/songs.js"></script>
-  <script src="js/audio.js"></script>
-  <script src="js/effects.js"></script>
-  <script src="js/game.js"></script>
-  <script src="js/main.js"></script>
+  <!-- Play Screen -->
+  <div id="play-screen" class="screen">
+    <div class="play-header">
+      <div class="song-name" id="song-name-display"></div>
+      <div class="progress-bar-container">
+        <div class="progress-bar" id="progress-bar"></div>
+      </div>
+      <div class="progress-text" id="progress-text">0%</div>
+    </div>
+
+    <canvas id="effect-canvas"></canvas>
+
+    <!-- Typing text display -->
+    <div id="typing-area">
+      <div id="typing-text"></div>
+    </div>
+
+    <div class="play-footer">
+      <span class="key-hint">任意のキーを押して演奏してください</span>
+      <button class="back-btn" id="back-btn">← 曲選択</button>
+    </div>
+  </div>
+
+  <!-- Complete Screen -->
+  <div id="complete-screen" class="screen">
+    <div class="complete-content">
+      <h2>演奏完了！</h2>
+      <p id="complete-song-name"></p>
+      <div class="complete-actions">
+        <button class="complete-btn" id="replay-btn">もう一度</button>
+        <button class="complete-btn" id="select-btn">曲を選ぶ</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Loading overlay -->
+<div id="loading-overlay">
+  <div class="spinner"></div>
+  <p id="loading-msg">読み込み中…</p>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+<script src="js/songs.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/effects.js"></script>
+<script src="js/game.js"></script>
+<script src="js/main.js"></script>
 </body>
 </html>

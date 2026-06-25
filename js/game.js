@@ -6,11 +6,12 @@ class Game {
     this.song = null;
     this.events = [];
     this.cursor = 0;
+    this.textCursor = 0;
     this.active = false;
 
-    // Callbacks set by main.js
-    this.onProgress = null;   // (ratio: number) => void
-    this.onComplete = null;   // () => void
+    this.onProgress  = null;  // (ratio: number) => void
+    this.onKeypress  = null;  // (textCursor: number) => void
+    this.onComplete  = null;  // () => void
 
     this._keyHandler = this._handleKey.bind(this);
   }
@@ -19,12 +20,14 @@ class Game {
     this.song = song;
     this.events = song.events;
     this.cursor = 0;
+    this.textCursor = 0;
     this.active = false;
   }
 
   start() {
     if (!this.song) return;
     this.cursor = 0;
+    this.textCursor = 0;
     this.active = true;
     document.addEventListener("keydown", this._keyHandler);
     document.addEventListener("pointerdown", this._keyHandler);
@@ -38,15 +41,13 @@ class Game {
 
   _handleKey(e) {
     if (!this.active) return;
-
-    // Ignore modifier-only keypresses and held keys
     if (e.type === "keydown") {
       if (e.repeat) return;
       const skip = ["Shift","Control","Alt","Meta","CapsLock","Tab","Escape",
-                    "ArrowLeft","ArrowRight","ArrowUp","ArrowDown"];
+                    "ArrowLeft","ArrowRight","ArrowUp","ArrowDown","F1","F2",
+                    "F3","F4","F5","F6","F7","F8","F9","F10","F11","F12"];
       if (skip.includes(e.key)) return;
     }
-
     this._playNext();
   }
 
@@ -57,18 +58,16 @@ class Game {
     this.audio.playNotes(event.notes);
     this.effects.trigger(event.notes);
     this.cursor++;
+    this.textCursor++;
 
-    const ratio = this.cursor / this.events.length;
-    if (this.onProgress) this.onProgress(ratio);
+    if (this.onProgress) this.onProgress(this.cursor / this.events.length);
+    if (this.onKeypress) this.onKeypress(this.textCursor);
 
     if (this.cursor >= this.events.length) {
-      // Short delay so the last note sounds before the complete screen appears
       this.active = false;
       document.removeEventListener("keydown", this._keyHandler);
       document.removeEventListener("pointerdown", this._keyHandler);
-      setTimeout(() => {
-        if (this.onComplete) this.onComplete();
-      }, 1800);
+      setTimeout(() => { if (this.onComplete) this.onComplete(); }, 1800);
     }
   }
 }
