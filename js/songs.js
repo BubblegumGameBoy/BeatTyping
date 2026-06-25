@@ -6,95 +6,98 @@ const SONGS = [
     bpm: 130,
     typingText: "rondo alla turca allegretto march vivace forte presto staccato beat rhythm",
     events: [
-      // ===== A Section (A minor) =====
-      {notes:["E5"]},{notes:["D#5"]},{notes:["E5"]},
-      {notes:["A5"]},
-      {notes:["A5"]},{notes:["G5"]},
-      {notes:["G5"]},{notes:["F#5"]},
+      // ===== A Section — A minor (Rondo alla Turca main theme) =====
+      // Phrase 1a: iconic ornamental motif
       {notes:["E5"]},
-      {notes:["D5"]},{notes:["C5"]},{notes:["B4"]},
-      {notes:["C5"]},{notes:["B4"]},{notes:["C5"]},
+      {notes:["D#5"]},{notes:["E5"]},{notes:["D#5"]},{notes:["E5"]},
+      {notes:["B4"]},{notes:["D5"]},{notes:["C5"]},
       {notes:["A4"]},
+      {notes:["C4"]},{notes:["E4"]},{notes:["A4"]},
+      {notes:["B4"]},
+      {notes:["C5"]},{notes:["D5"]},{notes:["E5"]},
+      {notes:["G4"]},{notes:["G#4"]},{notes:["A4"]},
 
-      {notes:["E5"]},{notes:["D#5"]},{notes:["E5"]},
-      {notes:["A5"]},
-      {notes:["A5"]},{notes:["G5"]},
-      {notes:["G5"]},{notes:["F#5"]},
+      // Phrase 1b: repeat
       {notes:["E5"]},
-      {notes:["D5"]},{notes:["C5"]},{notes:["B4"]},
+      {notes:["D#5"]},{notes:["E5"]},{notes:["D#5"]},{notes:["E5"]},
+      {notes:["B4"]},{notes:["D5"]},{notes:["C5"]},
       {notes:["A4"]},
+      {notes:["C4"]},{notes:["E4"]},{notes:["A4"]},
+      {notes:["B4"]},
+      {notes:["C5"]},{notes:["D5"]},{notes:["E5"]},
+      {notes:["G4"]},{notes:["G#4"]},{notes:["A4"]},
 
-      // A section contrasting phrase
+      // Phrase 2: contrasting (raised phrase with chromatic descent)
       {notes:["A5"]},{notes:["G#5"]},{notes:["A5"]},
       {notes:["F5"]},{notes:["E5"]},
       {notes:["D5"]},{notes:["C#5"]},{notes:["D5"]},
       {notes:["B4"]},{notes:["A4"]},
-      {notes:["B4"]},{notes:["C5"]},
-      {notes:["A4"]},
+      {notes:["G4"]},{notes:["A4"]},
+      {notes:["E4"]},
 
-      // Repeat A opening
-      {notes:["E5"]},{notes:["D#5"]},{notes:["E5"]},
-      {notes:["A5"]},
-      {notes:["A5"]},{notes:["G5"]},
-      {notes:["G5"]},{notes:["F#5"]},
+      // Phrase 1 closing repeat
       {notes:["E5"]},
-      {notes:["D5"]},{notes:["C5"]},{notes:["B4"]},
-      {notes:["C5"]},{notes:["B4"]},
+      {notes:["D#5"]},{notes:["E5"]},{notes:["D#5"]},{notes:["E5"]},
+      {notes:["B4"]},{notes:["D5"]},{notes:["C5"]},
       {notes:["A4"]},
+      {notes:["C4"]},{notes:["E4"]},{notes:["A4"]},
 
-      // ===== B Section (A major) =====
-      {notes:["A4"]},{notes:["A4"]},
-      {notes:["C#5"]},{notes:["E5"]},
+      // ===== B Section — A major (the bright marching theme) =====
+      // Phrase 3a: ascending major scale run
+      {notes:["A4"]},{notes:["A4"]},{notes:["A4"]},{notes:["A4"]},
+      {notes:["A4"]},{notes:["B4"]},{notes:["C#5"]},{notes:["D5"]},{notes:["E5"]},
+      {notes:["E5"]},{notes:["F#5"]},{notes:["G#5"]},
       {notes:["A5"]},
-      {notes:["C#5"]},{notes:["E5"]},
-      {notes:["A5"]},
-      {notes:["G#5"]},{notes:["A5"]},
-      {notes:["C#5"]},{notes:["E5"]},
-      {notes:["A4"]},
+      {notes:["A5"]},{notes:["G#5"]},
+      {notes:["F#5"]},{notes:["E5"]},{notes:["D5"]},{notes:["C#5"]},{notes:["B4"]},{notes:["A4"]},
 
-      {notes:["A4"]},{notes:["A4"]},
-      {notes:["D5"]},{notes:["F#5"]},
-      {notes:["A5"]},
-      {notes:["D5"]},{notes:["F#5"]},
-      {notes:["A5"]},
-      {notes:["G#5"]},{notes:["A5"]},
-      {notes:["F#5"]},{notes:["E5"]},
-      {notes:["C#5"]},{notes:["A4"]},
+      // Phrase 3b: D-major colour, same ascending pattern
+      {notes:["D5"]},{notes:["D5"]},{notes:["D5"]},{notes:["D5"]},
+      {notes:["D5"]},{notes:["E5"]},{notes:["F#5"]},{notes:["G5"]},{notes:["A5"]},
+      {notes:["A5"]},{notes:["G#5"]},
+      {notes:["F#5"]},{notes:["E5"]},{notes:["D5"]},{notes:["C#5"]},{notes:["B4"]},{notes:["A4"]},
 
+      // B-section cadence
       {notes:["E4"]},{notes:["C#4"]},{notes:["A4"]},
       {notes:["A4","C#5","E5"]},
 
       // ===== A Section Return =====
-      {notes:["E5"]},{notes:["D#5"]},{notes:["E5"]},
-      {notes:["A5"]},
-      {notes:["A5"]},{notes:["G5"]},
-      {notes:["G5"]},{notes:["F#5"]},
+      // Phrase 1a
       {notes:["E5"]},
-      {notes:["D5"]},{notes:["C5"]},{notes:["B4"]},
-      {notes:["C5"]},{notes:["B4"]},{notes:["C5"]},
+      {notes:["D#5"]},{notes:["E5"]},{notes:["D#5"]},{notes:["E5"]},
+      {notes:["B4"]},{notes:["D5"]},{notes:["C5"]},
       {notes:["A4"]},
+      {notes:["C4"]},{notes:["E4"]},{notes:["A4"]},
+      {notes:["B4"]},
+      {notes:["C5"]},{notes:["D5"]},{notes:["E5"]},
+      {notes:["G4"]},{notes:["G#4"]},{notes:["A4"]},
 
-      {notes:["E5"]},{notes:["D#5"]},{notes:["E5"]},
-      {notes:["A5"]},
-      {notes:["A5"]},{notes:["G5"]},
-      {notes:["G5"]},{notes:["F#5"]},
+      // Phrase 1b repeat
       {notes:["E5"]},
-      {notes:["D5"]},{notes:["C5"]},{notes:["B4"]},
+      {notes:["D#5"]},{notes:["E5"]},{notes:["D#5"]},{notes:["E5"]},
+      {notes:["B4"]},{notes:["D5"]},{notes:["C5"]},
       {notes:["A4"]},
+      {notes:["C4"]},{notes:["E4"]},{notes:["A4"]},
+      {notes:["B4"]},
+      {notes:["C5"]},{notes:["D5"]},{notes:["E5"]},
+      {notes:["G4"]},{notes:["G#4"]},{notes:["A4"]},
 
-      // ===== Coda (A major) =====
-      {notes:["A4"]},{notes:["A4"]},{notes:["A4"]},
-      {notes:["C#5"]},{notes:["E5"]},
+      // Phrase 2 return
+      {notes:["A5"]},{notes:["G#5"]},{notes:["A5"]},
+      {notes:["F5"]},{notes:["E5"]},
+      {notes:["D5"]},{notes:["C#5"]},{notes:["D5"]},
+      {notes:["B4"]},{notes:["A4"]},
+      {notes:["G4"]},{notes:["A4"]},
+      {notes:["E4"]},
+
+      // ===== Coda — A major (triumphant march ending) =====
       {notes:["A4","C#5","E5"]},
-      {notes:["A5"]},
-      {notes:["G#5"]},{notes:["A5"]},
-      {notes:["C#5"]},{notes:["E5"]},
+      {notes:["A4"]},{notes:["A4"]},{notes:["A4"]},{notes:["A4"]},
       {notes:["A4","C#5","E5"]},
-      {notes:["A5"]},
-      {notes:["C#5"]},{notes:["E5"]},{notes:["A5"]},
+      {notes:["G#4","B4","D#5","G#5"]},
+      {notes:["A4","C#5","E5"]},
+      {notes:["A4"]},{notes:["C#5"]},{notes:["E5"]},{notes:["A5"]},
       {notes:["G#5"]},{notes:["A5"]},
-      {notes:["E5"]},{notes:["C#5"]},
-      {notes:["A4"]},
       {notes:["E5"]},{notes:["C#5"]},
       {notes:["A4","C#5","E5","A5"]},
     ]

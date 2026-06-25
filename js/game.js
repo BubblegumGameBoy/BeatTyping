@@ -59,6 +59,12 @@ class Game {
   _reschedule() {
     clearTimeout(this._autoTimer);
     const ms = 60000 / this.bpm;
+
+    // Show the next note as a falling tile
+    if (this.cursor < this.events.length) {
+      this.effects.scheduleFalling(this.events[this.cursor].notes, ms);
+    }
+
     this._autoTimer = setTimeout(() => {
       if (this.active && this.cursor < this.events.length) {
         this._playNext();

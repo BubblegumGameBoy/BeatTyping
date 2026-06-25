@@ -116,41 +116,8 @@ html, body {
 .progress-bar { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent2), var(--accent)); transition: width .2s ease; }
 .progress-text { font-size: .76rem; color: var(--muted); width: 34px; text-align: right; flex-shrink: 0; }
 
-/* ─── Typing text area ─────────────────────────────────────────────────────── */
-#typing-area {
-  position: relative; z-index: 2;
-  margin: auto 0;               /* vertically centred between header and footer */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 24px;
-  pointer-events: none;
-}
-
-#typing-text {
-  font-family: 'Courier New', 'Courier', monospace;
-  font-size: clamp(1rem, 2.5vw, 1.5rem);
-  letter-spacing: .12em;
-  white-space: nowrap;
-  overflow: hidden;
-  max-width: 90vw;
-  line-height: 1;
-}
-
-/* Characters */
-.ch-typed  { color: var(--muted); opacity: .5; }
-.ch-cursor {
-  color: var(--accent);
-  text-shadow: 0 0 16px rgba(200,168,75,.9);
-  border-bottom: 2px solid var(--accent);
-  animation: blink .9s ease-in-out infinite;
-}
-.ch-wait   { color: var(--text); opacity: .55; }
-
-@keyframes blink {
-  0%,100% { opacity: 1; }
-  50%      { opacity: .3; }
-}
+/* ─── Typing text area — hidden; canvas falling-notes replaces it ──────────── */
+#typing-area { display: none; }
 
 /* ─── Footer ───────────────────────────────────────────────────────────────── */
 .play-footer {

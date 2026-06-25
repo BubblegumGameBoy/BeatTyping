@@ -17,44 +17,11 @@ function hideLoading() {
   document.getElementById("loading-overlay").classList.remove("active");
 }
 
-// ─── Typing text display ──────────────────────────────────────────────────────
-function renderTypingText(text, absoluteCursor) {
-  const el = document.getElementById("typing-text");
-  if (!el || !text) return;
-
-  const len = text.length;
-  const pos = absoluteCursor % len;         // position within the current loop
-  const loopNum = Math.floor(absoluteCursor / len);
-
-  // Show a window of ~60 chars centered on cursor
-  const WINDOW = 60;
-  const half = Math.floor(WINDOW / 2);
-  let start = pos - half;
-  let adjustedPos = half;
-  if (start < 0) { adjustedPos = pos; start = 0; }
-
-  // Build repeated text so we can show seamless looping
-  const repeated = (loopNum > 0 ? text + " " : "") + text + " " + text;
-  const offset    = loopNum > 0 ? text.length + 1 : 0;
-  const absPos    = offset + pos;
-  const winStart  = Math.max(0, absPos - half);
-  const winEnd    = winStart + WINDOW;
-  const slice     = repeated.slice(winStart, winEnd);
-  const cursorIdx = absPos - winStart;
-
-  el.innerHTML = slice.split("").map((ch, i) => {
-    const c = ch === " " ? "&nbsp;" : ch;
-    if (i < cursorIdx)  return `<span class="ch-typed">${c}</span>`;
-    if (i === cursorIdx) return `<span class="ch-cursor">${c}</span>`;
-    return `<span class="ch-wait">${c}</span>`;
-  }).join("");
-}
-
 // ─── Song list ────────────────────────────────────────────────────────────────
 function buildSongList() {
   const list = document.getElementById("song-list");
   list.innerHTML = "";
-  SONGS.forEach(song => {
+  SONGS.filter(s => !s.id.startsWith("_")).forEach(song => {
     const card = document.createElement("div");
     card.className = "song-card";
     card.innerHTML = `
@@ -82,7 +49,6 @@ async function selectSong(song) {
     `${song.title}  ／  ${song.composer}`;
   document.getElementById("bpm-display").textContent = game.bpm;
   setProgress(0);
-  renderTypingText(song.typingText || "", 0);
 
   showScreen("play-screen");
   setTimeout(() => game.start(), 400);
@@ -110,7 +76,6 @@ window.addEventListener("DOMContentLoaded", () => {
   game          = new Game(audioEngine, effectsEngine);
 
   game.onProgress = setProgress;
-  game.onKeypress = (cur) => renderTypingText(currentSong?.typingText || "", cur);
   game.onComplete = showComplete;
 
   buildSongList();
