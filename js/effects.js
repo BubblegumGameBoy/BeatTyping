@@ -54,6 +54,11 @@ class EffectsEngine {
     if (this._raf) cancelAnimationFrame(this._raf);
   }
 
+  // Subtle beat flash (auto-advance visual feedback)
+  pulse() {
+    this.bgFlash = Math.max(this.bgFlash, 0.08);
+  }
+
   // Called on each keypress with the notes array
   trigger(notes) {
     if (!notes || notes.length === 0) return;

@@ -94,7 +94,25 @@ html, body {
   border-bottom: 1px solid var(--border);
 }
 .song-name { font-size: .88rem; color: var(--muted); letter-spacing: .05em; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.progress-bar-container { width: 160px; height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; flex-shrink: 0; }
+/* BPM control */
+.bpm-control {
+  display: flex; align-items: center; gap: 6px; flex-shrink: 0;
+}
+.bpm-btn {
+  background: var(--surface); border: 1px solid var(--border);
+  color: var(--muted); width: 26px; height: 26px; border-radius: 6px;
+  font-size: 1rem; line-height: 1; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: border-color .15s, color .15s; flex-shrink: 0;
+}
+.bpm-btn:hover { border-color: var(--accent); color: var(--accent); }
+#bpm-display {
+  font-size: .82rem; color: var(--accent); min-width: 30px; text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.bpm-label { font-size: .68rem; color: var(--muted); letter-spacing: .06em; }
+
+.progress-bar-container { width: 130px; height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; flex-shrink: 0; }
 .progress-bar { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent2), var(--accent)); transition: width .2s ease; }
 .progress-text { font-size: .76rem; color: var(--muted); width: 34px; text-align: right; flex-shrink: 0; }
 

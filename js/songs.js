@@ -3,6 +3,7 @@ const SONGS = [
     id: "turkish_march",
     title: "トルコ行進曲",
     composer: "W.A. モーツァルト",
+    bpm: 130,
     typingText: "rondo alla turca allegretto march vivace forte presto staccato beat rhythm",
     events: [
       // ===== A Section (A minor) =====
@@ -103,6 +104,7 @@ const SONGS = [
     id: "fur_elise",
     title: "エリーゼのために",
     composer: "L.v. ベートーヴェン",
+    bpm: 72,
     typingText: "fur elise adagio cantabile beethoven piano serenade nocturne",
     events: [
       // ===== A Section (1st) =====
@@ -170,6 +172,7 @@ const SONGS = [
     id: "moonlight",
     title: "月光 第1楽章",
     composer: "L.v. ベートーヴェン",
+    bpm: 54,
     typingText: "moonlight adagio sostenuto nocturne piano sonata serenade",
     events: [
       // C# minor — each event = one triplet arpeggio group (3 notes)
@@ -251,6 +254,7 @@ const SONGS = [
     id: "canon",
     title: "カノン",
     composer: "J. パッヘルベル",
+    bpm: 80,
     typingText: "canon pachelbel baroque allegro harmony counterpoint",
     events: [
       // D major — 8-chord progression: D A Bm F#m G D G A
@@ -299,6 +303,7 @@ const SONGS = [
     id: "gymnopedie",
     title: "ジムノペディ第1番",
     composer: "E. サティ",
+    bpm: 42,
     typingText: "gymnopedie lent satie impressionism piano nocturne",
     events: [
       // 3/4 waltz: bass → chord → melody (3 events per measure)

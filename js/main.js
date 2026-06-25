@@ -80,6 +80,7 @@ async function selectSong(song) {
   game.load(song);
   document.getElementById("song-name-display").textContent =
     `${song.title}  ／  ${song.composer}`;
+  document.getElementById("bpm-display").textContent = game.bpm;
   setProgress(0);
   renderTypingText(song.typingText || "", 0);
 
@@ -113,6 +114,22 @@ window.addEventListener("DOMContentLoaded", () => {
   game.onComplete = showComplete;
 
   buildSongList();
+
+  // BPM controls
+  const bpmDisplay = document.getElementById("bpm-display");
+  game.onBpmChange = (bpm) => { bpmDisplay.textContent = bpm; };
+
+  document.getElementById("bpm-down").addEventListener("click", (e) => {
+    e.stopPropagation();
+    game.setBpm(game.bpm - 5);
+  });
+  document.getElementById("bpm-up").addEventListener("click", (e) => {
+    e.stopPropagation();
+    game.setBpm(game.bpm + 5);
+  });
+
+  // Beat pulse on effects canvas
+  game.onBeat = () => effectsEngine.pulse();
 
   document.getElementById("back-btn").addEventListener("click", () => {
     game.stop();
