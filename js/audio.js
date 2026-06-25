@@ -62,13 +62,13 @@ class AudioEngine {
   }
 
   // Play a list of note strings simultaneously.
-  // duration: Tone.js time value or seconds (e.g. "2n", 1.5)
-  playNotes(notes, duration = 1.8) {
+  // velocity: 0–1 (default 0.85 for melody, use ~0.40 for accompaniment)
+  playNotes(notes, velocity = 0.85, duration = 1.8) {
     if (!this.ready || !notes || notes.length === 0) return;
     const now = Tone.now();
     notes.forEach((note) => {
       try {
-        this.sampler.triggerAttackRelease(note, duration, now);
+        this.sampler.triggerAttackRelease(note, duration, now, velocity);
       } catch (e) {
         // ignore unrecognised note strings
       }

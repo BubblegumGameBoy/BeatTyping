@@ -71,7 +71,7 @@ class EffectsEngine {
     };
   }
 
-  // Called each time a note event fires
+  // Called each time a melody note event fires
   trigger(notes) {
     if (!notes || notes.length === 0) return;
 
@@ -101,6 +101,14 @@ class EffectsEngine {
     });
 
     this.bgFlash = 0.15;
+  }
+
+  // Called for auto accompaniment — soft piano key glow only, no burst or label
+  triggerAccomp(notes) {
+    if (!notes || notes.length === 0) return;
+    notes.forEach((note) => {
+      this.pianoGlow[note] = Math.max(this.pianoGlow[note] ?? 0, 0.38);
+    });
   }
 
   _burst(x, y, hue) {

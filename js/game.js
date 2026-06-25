@@ -92,8 +92,15 @@ class Game {
     if (this.cursor >= this.events.length) return;
 
     const event = this.events[this.cursor];
-    this.audio.playNotes(event.notes);
+    this.audio.playNotes(event.notes, 0.85, 1.8);
     this.effects.trigger(event.notes);
+
+    // Auto accompaniment (bass / chord) plays softer alongside the melody
+    if (event.accomp && event.accomp.length > 0) {
+      this.audio.playNotes(event.accomp, 0.38, 2.4);
+      this.effects.triggerAccomp(event.accomp);
+    }
+
     this.cursor++;
     this.textCursor++;
 
