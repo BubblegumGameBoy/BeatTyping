@@ -1,3 +1,20 @@
+// Key pool for note→key assignment. Ordered by typing ease so the most
+// frequent notes land on the home row (F J D K S L A G H), then top, then bottom.
+const KEY_POOL = [
+  "F","J","D","K","S","L","A","G","H",
+  "Q","W","E","R","T","Y","U","I","O","P",
+  "Z","X","C","V","B","N","M",
+];
+
+const NOTE_ORDER = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
+function noteMidi(noteStr) {
+  const letter = noteStr.match(/[A-G]/)?.[0] ?? "C";
+  const sharp  = noteStr.includes("#");
+  const octave = parseInt(noteStr.match(/\d+/)?.[0] ?? "4");
+  const idx = NOTE_ORDER.indexOf(letter + (sharp ? "#" : ""));
+  return octave * 12 + (idx === -1 ? 0 : idx);
+}
+
 class Game {
   constructor(audioEngine, effectsEngine) {
     this.audio = audioEngine;
@@ -13,9 +30,17 @@ class Game {
     this.autoAdvance  = true;
     this._autoTimer   = null;
 
+    // Rhythm timing of the currently-falling note
+    this._noteStart = 0;
+    this._noteMs    = 0;
+
     // Layer system: 0 = melody only, 1 = +drums+bass, 2 = +pad
     this.combo = 0;
     this.layer = 0;
+
+    // Timing windows (as fraction of the tile's fall)
+    this.EARLY_OK = 0.45;  // before this it's "too early" — ignored
+    this.PERFECT  = 0.82;  // at/after this it's a PERFECT hit
 
     // Callbacks
     this.onProgress  = null;  // (ratio) => void
@@ -36,7 +61,24 @@ class Game {
     this.active     = false;
     this.combo      = 0;
     this.layer      = 0;
+    this._assignKeys();
     clearTimeout(this._autoTimer);
+  }
+
+  // Deterministically map each distinct pitch to a key.
+  // Most-used pitches get the easiest keys (home row first).
+  _assignKeys() {
+    const counts = {};
+    this.events.forEach((e) => {
+      const p = e.notes[0];
+      counts[p] = (counts[p] || 0) + 1;
+    });
+    const pitches = Object.keys(counts).sort(
+      (a, b) => counts[b] - counts[a] || noteMidi(a) - noteMidi(b)
+    );
+    const map = {};
+    pitches.forEach((p, i) => { map[p] = KEY_POOL[i % KEY_POOL.length]; });
+    this.events.forEach((e) => { e.key = map[e.notes[0]]; });
   }
 
   setBpm(bpm) {
@@ -52,7 +94,6 @@ class Game {
     this.combo      = 0;
     this.layer      = 0;
     this.active     = true;
-    // Pre-load drums & pad so they're ready when the player builds combo
     this.audio.initDrumsAndPad();
     document.addEventListener("keydown",     this._keyHandler);
     document.addEventListener("pointerdown", this._keyHandler);
@@ -70,8 +111,13 @@ class Game {
     clearTimeout(this._autoTimer);
     const ms = 60000 / this.bpm;
 
+    this._noteStart = performance.now();
+    this._noteMs    = ms;
+
     if (this.cursor < this.events.length) {
-      this.effects.scheduleFalling(this.events[this.cursor].notes, ms);
+      const ev = this.events[this.cursor];
+      this.effects.scheduleFalling(ev.notes, ms, ev.key);
+      this.effects.setNextKeys(ev.key, this.events[this.cursor + 1]?.key);
     }
 
     this._autoTimer = setTimeout(() => {
@@ -84,31 +130,45 @@ class Game {
 
   _handleKey(e) {
     if (!this.active) return;
-    if (e.type === "keydown") {
+    if (this.cursor >= this.events.length) return;
+
+    const target  = this.events[this.cursor].key;
+    const pointer = e.type === "pointerdown";
+
+    let key;
+    if (pointer) {
+      key = target;  // tap/click always targets the right key
+    } else {
       if (e.repeat) return;
-      const skip = ["Shift","Control","Alt","Meta","CapsLock","Tab","Escape",
-                    "ArrowLeft","ArrowRight","ArrowUp","ArrowDown",
-                    "F1","F2","F3","F4","F5","F6","F7","F8","F9","F10","F11","F12"];
-      if (skip.includes(e.key)) return;
+      if (!/^[a-zA-Z]$/.test(e.key)) return;  // ignore non-letter keys
+      key = e.key.toUpperCase();
     }
-    clearTimeout(this._autoTimer);
-    this._playNext(true);   // manual keypress = hit
-    if (this.autoAdvance && this.active) this._reschedule();
+
+    const progress = this._noteMs
+      ? (performance.now() - this._noteStart) / this._noteMs
+      : 1;
+
+    if (key === target) {
+      // Correct key — but did they wait for the beat?
+      if (!pointer && progress < this.EARLY_OK) return;  // too early: ignore
+      const rating = progress >= this.PERFECT ? "PERFECT" : "GOOD";
+      this.effects.showRating(rating);
+      clearTimeout(this._autoTimer);
+      this._playNext(true);
+      if (this.autoAdvance && this.active) this._reschedule();
+    } else {
+      // Wrong key — typo. Break combo, flash, don't advance.
+      this._applyCombo(false);
+      this.effects.flashError();
+    }
   }
 
-  // Update combo and derive the active layer (0/1/2).
-  // Returns true when the layer changed.
-  _updateCombo(isManual) {
-    if (isManual) {
-      this.combo++;
-    } else {
-      this.combo = 0;  // missed — auto-advance fired
-    }
-    const newLayer = this.combo >= 20 ? 2 : this.combo >= 8 ? 1 : 0;
-    if (newLayer !== this.layer) {
-      this.layer = newLayer;
-      this.effects.setLayer(newLayer, this.combo, isManual);
-    }
+  // Update combo + derived layer. hit=true increments, hit=false resets.
+  _applyCombo(hit) {
+    const prev = this.layer;
+    if (hit) this.combo++; else this.combo = 0;
+    this.layer = this.combo >= 20 ? 2 : this.combo >= 8 ? 1 : 0;
+    if (this.layer !== prev) this.effects.setLayer(this.layer, this.combo, hit);
     this.effects.combo = this.combo;
     this.effects.layer = this.layer;
   }
@@ -117,7 +177,7 @@ class Game {
     if (this.cursor >= this.events.length) return;
 
     const event = this.events[this.cursor];
-    this._updateCombo(isManual);
+    this._applyCombo(isManual);
 
     // Melody — always plays
     this.audio.playNotes(event.notes, 0.85, 1.8);
@@ -138,9 +198,9 @@ class Game {
       else if (beat === 3) { this.audio.playHihat(0.28); }
     }
 
-    // Layer 2: string pad — trigger on downbeats using the chord tones from accomp
+    // Layer 2: string pad on downbeats, using mid/high chord tones from accomp
     if (this.layer >= 2 && this.cursor % 4 === 0 && event.accomp) {
-      const chordNotes = event.accomp.filter(n => {
+      const chordNotes = event.accomp.filter((n) => {
         const oct = parseInt(n.match(/\d+/)?.[0] ?? "0");
         return oct >= 3;
       });
@@ -157,6 +217,7 @@ class Game {
     if (this.cursor >= this.events.length) {
       this.active = false;
       clearTimeout(this._autoTimer);
+      this.effects.setNextKeys(null, null);
       document.removeEventListener("keydown",     this._keyHandler);
       document.removeEventListener("pointerdown", this._keyHandler);
       setTimeout(() => { if (this.onComplete) this.onComplete(); }, 1800);

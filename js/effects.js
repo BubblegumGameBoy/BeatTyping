@@ -40,6 +40,11 @@ class EffectsEngine {
     this.layer       = 0;
     this.layerBanner = null; // {text, hue, alpha, ticks}
 
+    // Typing-keyboard guidance
+    this.nextKey    = null;  // key to press now (glows)
+    this.nextKey2   = null;  // upcoming key (dim)
+    this.errorFlash = 0;     // red flash on wrong key
+
     this._running = false;
     this._raf     = null;
 
@@ -68,15 +73,39 @@ class EffectsEngine {
   }
 
   // Schedule the next note tile to fall, arriving at hit zone after `durationMs`
-  scheduleFalling(notes, durationMs) {
+  scheduleFalling(notes, durationMs, key) {
     if (this.fallingTile && !this.fallingTile.hit) return; // already falling
     this.fallingTile = {
       notes,
+      key,
       startTime: performance.now(),
       duration: Math.max(150, durationMs),
       hit: false,
       hitTime: null,
     };
+  }
+
+  setNextKeys(k1, k2) {
+    this.nextKey  = k1 || null;
+    this.nextKey2 = k2 || null;
+  }
+
+  flashError() {
+    this.errorFlash = 1;
+  }
+
+  // Floating "PERFECT" / "GOOD" judgement near the hit line
+  showRating(text) {
+    const hue = text === "PERFECT" ? 45 : 190;
+    this.floaters.push({
+      text,
+      x: this.canvas.width / 2 + (Math.random() - 0.5) * 90,
+      y: this._hitZoneY() - 34,
+      alpha: 1,
+      vy: -1.9,
+      decay: 0.03,
+      hue,
+    });
   }
 
   // Called each time a melody note event fires
@@ -167,6 +196,7 @@ class EffectsEngine {
     });
 
     if (this.bgFlash > 0) this.bgFlash -= 0.01;
+    if (this.errorFlash > 0) this.errorFlash -= 0.06;
 
     if (this.layerBanner) {
       this.layerBanner.ticks--;
@@ -258,13 +288,21 @@ class EffectsEngine {
         _roundRect(ctx, x - tileW / 2, y - tileH, tileW, tileH, 5);
         ctx.fill();
 
-        // Label
+        // Big key letter + small note label
         ctx.globalAlpha = Math.min(1, pulse + 0.3);
-        ctx.font        = "bold 13px monospace";
         ctx.textAlign   = "center";
-        ctx.fillStyle   = "rgba(255,255,255,0.95)";
         ctx.shadowBlur  = 0;
-        ctx.fillText(noteLabel(note), x, y - tileH / 2 + 5);
+        ctx.fillStyle   = "rgba(255,255,255,0.98)";
+        if (tile.key) {
+          ctx.font = "bold 17px monospace";
+          ctx.fillText(tile.key, x, y - tileH / 2 + 2);
+          ctx.font = "9px 'Hiragino Kaku Gothic Pro', monospace";
+          ctx.fillStyle = "rgba(255,255,255,0.7)";
+          ctx.fillText(noteLabel(note), x, y - tileH / 2 + 13);
+        } else {
+          ctx.font = "bold 13px monospace";
+          ctx.fillText(noteLabel(note), x, y - tileH / 2 + 5);
+        }
         ctx.restore();
       });
     }
@@ -278,6 +316,13 @@ class EffectsEngine {
       ctx.fillStyle = `rgba(255,255,200,${this.bgFlash * 0.07})`;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
+    if (this.errorFlash > 0) {
+      ctx.fillStyle = `rgba(255,50,50,${this.errorFlash * 0.13})`;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+
+    // Background typing keyboard (finger-position guide)
+    drawKeyboard(ctx, canvas.width, canvas.height, this.nextKey, this.nextKey2);
 
     const now = performance.now();
     this._drawFallingTile(now);
@@ -391,6 +436,66 @@ function _roundRect(ctx, x, y, w, h, r) {
     ctx.quadraticCurveTo(x, y, x + r, y);
     ctx.closePath();
   }
+}
+
+// ─── Typing keyboard (background finger guide) ─────────────────────────────────
+
+const KB_ROWS = [
+  ["Q","W","E","R","T","Y","U","I","O","P"],
+  ["A","S","D","F","G","H","J","K","L"],
+  ["Z","X","C","V","B","N","M"],
+];
+const KB_ROW_STAGGER = [0, 0.45, 0.9]; // QWERTY row offsets (in key units)
+
+function drawKeyboard(ctx, width, height, nextKey, nextKey2) {
+  const keyW = Math.min(58, width * 0.062);
+  const gap  = keyW * 0.13;
+  const unit = keyW + gap;
+  const startY = height * 0.30;
+
+  ctx.save();
+  ctx.textAlign    = "center";
+  ctx.textBaseline = "middle";
+
+  KB_ROWS.forEach((row, r) => {
+    const rowW    = row.length * unit - gap;
+    const offset  = KB_ROW_STAGGER[r] * unit;
+    const startX  = (width - (10 * unit - gap)) / 2 + offset;
+    const y       = startY + r * unit;
+
+    row.forEach((k, i) => {
+      const x = startX + i * unit;
+      const isNext  = nextKey  && k === nextKey;
+      const isNext2 = nextKey2 && k === nextKey2;
+
+      _roundRect(ctx, x, y, keyW, keyW, 8);
+
+      if (isNext) {
+        ctx.shadowBlur  = 32;
+        ctx.shadowColor = "hsl(48,90%,60%)";
+        ctx.fillStyle   = "hsla(48,92%,62%,0.95)";
+        ctx.fill();
+        ctx.shadowBlur  = 0;
+        ctx.fillStyle   = "rgba(25,22,30,0.95)";
+      } else if (isNext2) {
+        ctx.fillStyle = "hsla(200,70%,55%,0.30)";
+        ctx.fill();
+        ctx.fillStyle = "rgba(220,235,255,0.78)";
+      } else {
+        ctx.fillStyle = "rgba(255,255,255,0.045)";
+        ctx.fill();
+        ctx.strokeStyle = "rgba(255,255,255,0.10)";
+        ctx.lineWidth   = 1;
+        ctx.stroke();
+        ctx.fillStyle = "rgba(200,210,230,0.28)";
+      }
+
+      ctx.font = `bold ${Math.floor(keyW * 0.42)}px monospace`;
+      ctx.fillText(k, x + keyW / 2, y + keyW / 2 + 1);
+    });
+  });
+
+  ctx.restore();
 }
 
 // ─── Piano keyboard ───────────────────────────────────────────────────────────
