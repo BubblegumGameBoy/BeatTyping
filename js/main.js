@@ -2,7 +2,6 @@ let audioEngine   = null;
 let effectsEngine = null;
 let game          = null;
 let currentSong   = null;
-let selectedMode  = "note";  // "note" | "word" — chosen on the title screen
 
 // ─── Screen helpers ───────────────────────────────────────────────────────────
 function showScreen(id) {
@@ -57,24 +56,8 @@ async function selectSong(song) {
     hideLoading();
   }
 
-  // Tutorial songs are finger-position training — always note-mode.
-  const mode = song.tutorial ? "note" : selectedMode;
-  game.load(song, mode);
-
-  // Word-mode shows the DOM typing area; note-mode shows the falling-tile canvas.
-  const typingArea = document.getElementById("typing-area");
-  const wordMode = mode === "word";
-  typingArea.style.display = wordMode ? "flex" : "none";
-  if (wordMode) typingArea.innerHTML = "";
-  document.getElementById("play-screen").classList.toggle("word-mode", wordMode);
-
-  if (game.onHint) {
-    game.onHint(
-      song.tutorial ? "準備OK！最初のタイルを待ってね"
-      : wordMode    ? "単語をローマ字で入力しよう（押すまで待つよ）"
-      : null
-    );
-  }
+  game.load(song);
+  if (game.onHint) game.onHint(song.tutorial ? "準備OK！最初のタイルを待ってね" : null);
   document.getElementById("song-name-display").textContent =
     `${song.title}  ／  ${song.composer}`;
   document.getElementById("bpm-display").textContent = game.bpm;
@@ -88,35 +71,6 @@ async function selectSong(song) {
   } else {
     setTimeout(() => game.start(), 400);
   }
-}
-
-// ─── Word-mode typing display ───────────────────────────────────────────────
-//  state = { units:[{kana,romaji,startNote,len}], idx, typed }
-function renderWordState(state) {
-  const area = document.getElementById("typing-area");
-  if (!area || !state) return;
-  const { units, idx, typed } = state;
-  const cur = units[idx];
-
-  // Current word: kana headline + per-letter romaji (done / current / rest)
-  let romaji = "";
-  for (let i = 0; i < cur.romaji.length; i++) {
-    const cls = i < typed ? "tc-done" : i === typed ? "tc-cur" : "tc-rest";
-    romaji += `<span class="${cls}">${cur.romaji[i].toUpperCase()}</span>`;
-  }
-
-  // Upcoming words (kana only) as a preview queue
-  let nexts = "";
-  for (let j = idx + 1; j < Math.min(idx + 5, units.length); j++) {
-    nexts += `<span class="nw">${units[j].kana}</span>`;
-  }
-
-  area.innerHTML =
-    `<div class="word-current">` +
-      `<div class="word-kana">${cur.kana}</div>` +
-      `<div class="word-romaji">${romaji}</div>` +
-    `</div>` +
-    `<div class="word-next">${nexts}</div>`;
 }
 
 // ─── Progress ─────────────────────────────────────────────────────────────────
@@ -152,20 +106,7 @@ window.addEventListener("DOMContentLoaded", () => {
     keyHintEl.classList.toggle("tutorial-hint", !!text);
   };
 
-  // Word-mode typing display
-  game.onWordState = renderWordState;
-
   buildSongList();
-
-  // Mode toggle (note / word)
-  document.querySelectorAll(".mode-opt").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      selectedMode = btn.dataset.mode;
-      document.querySelectorAll(".mode-opt").forEach((b) =>
-        b.classList.toggle("active", b === btn)
-      );
-    });
-  });
 
   // BPM controls
   const bpmDisplay = document.getElementById("bpm-display");
