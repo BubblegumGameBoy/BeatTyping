@@ -6,6 +6,10 @@ const KEY_POOL = [
   "Z","X","C","V","B","N","M",
 ];
 
+// In wait-mode the tile glides in over this fixed time, then rests on the hit
+// zone until the player presses — no auto-miss, no speed pressure.
+const WAIT_FALL_MS = 600;
+
 const NOTE_ORDER = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
 function noteMidi(noteStr) {
   const letter = noteStr.match(/[A-G]/)?.[0] ?? "C";
@@ -27,7 +31,10 @@ class Game {
     this.active     = false;
 
     this.bpm          = 120;
-    this.autoAdvance  = true;
+    // Wait-mode (default): the current note stays until the correct key is
+    // pressed. No timeout, no miss-by-timing. Set true to restore the old
+    // tempo-driven auto-advance (notes self-dismiss when time runs out).
+    this.autoAdvance  = false;
     this._autoTimer   = null;
 
     // Rhythm timing of the currently-falling note
@@ -109,7 +116,7 @@ class Game {
     this.audio.startBacking(this.bpm);
     document.addEventListener("keydown",     this._keyHandler);
     document.addEventListener("pointerdown", this._keyHandler);
-    if (this.autoAdvance) this._reschedule();
+    this._reschedule();  // present the first note (waits for input in wait-mode)
   }
 
   stop() {
@@ -120,9 +127,14 @@ class Game {
     document.removeEventListener("pointerdown", this._keyHandler);
   }
 
+  // Present the current note: glide its tile in, light up its key, show the
+  // hint. In wait-mode (default) the note then sits until the player presses;
+  // in auto-advance mode a timeout dismisses it as a miss when time runs out.
   _reschedule() {
     clearTimeout(this._autoTimer);
-    const ms = 60000 / this.bpm;
+    // Tile entrance time: tempo-driven when auto-advancing, otherwise a fixed
+    // calm glide that does NOT gate the player.
+    const ms = this.autoAdvance ? (60000 / this.bpm) : WAIT_FALL_MS;
 
     // New note becomes active → reset the per-note miss counter.
     this.missStreak = 0;
@@ -140,12 +152,14 @@ class Game {
       if (this.onHint && ev.hint !== undefined) this.onHint(ev.hint || null);
     }
 
-    this._autoTimer = setTimeout(() => {
-      if (this.active && this.cursor < this.events.length) {
-        this._playNext(false);  // auto-advance = miss
-        this._reschedule();
-      }
-    }, ms);
+    if (this.autoAdvance) {
+      this._autoTimer = setTimeout(() => {
+        if (this.active && this.cursor < this.events.length) {
+          this._playNext(false);  // auto-advance = miss
+          this._reschedule();
+        }
+      }, ms);
+    }
   }
 
   _handleKey(e) {
@@ -164,22 +178,24 @@ class Game {
       key = e.key.toUpperCase();
     }
 
-    const progress = this._noteMs
-      ? (performance.now() - this._noteStart) / this._noteMs
-      : 1;
-
     if (key === target) {
       // Correct key — play immediately so the music follows the player's pace.
-      // Early input is welcome and earns a bonus.
-      // Early input counts as PERFECT too (rewarded, not punished).
-      let rating, bonus;
-      if (progress < this.EARLY_OK || progress >= this.PERFECT) { rating = "PERFECT"; bonus = 1; }
-      else                                                      { rating = "GOOD";    bonus = 0; }
-      this.effects.showRating(rating);
+      // Wait-mode: no timing judgement at all, every correct press is rewarded
+      // and builds the combo. Auto-advance mode keeps the PERFECT/GOOD rating.
+      let bonus = 1;
+      if (this.autoAdvance) {
+        const progress = this._noteMs
+          ? (performance.now() - this._noteStart) / this._noteMs
+          : 1;
+        let rating;
+        if (progress < this.EARLY_OK || progress >= this.PERFECT) { rating = "PERFECT"; bonus = 1; }
+        else                                                      { rating = "GOOD";    bonus = 0; }
+        this.effects.showRating(rating);
+      }
       this.missStreak = 0;
       clearTimeout(this._autoTimer);
       this._playNext(true, bonus);
-      if (this.autoAdvance && this.active) this._reschedule();
+      if (this.active) this._reschedule();
     } else {
       // Wrong key — flash. Combo only breaks after 3 misses on THIS note
       // (the counter resets when the next note arrives).
