@@ -73,8 +73,16 @@ html, body {
   border-color: var(--accent); transform: translateY(-3px);
   box-shadow: 0 8px 32px rgba(200,168,75,.15);
 }
-.song-card-title { font-size: 1rem; font-weight: 500; }
+.song-card-top { display: flex; align-items: center; gap: 8px; }
+.song-card-title { font-size: 1rem; font-weight: 500; flex: 1; }
+.level-badge {
+  font-size: .65rem; font-weight: 600; letter-spacing: .05em;
+  padding: 2px 8px; border-radius: 10px; white-space: nowrap; flex-shrink: 0;
+}
+.level-badge.beginner { background: rgba(48,176,69,.18); color: #52d46a; border: 1px solid rgba(48,176,69,.35); }
+.level-badge.advanced  { background: rgba(200,168,75,.18); color: var(--accent); border: 1px solid rgba(200,168,75,.35); }
 .song-card-composer { font-size: .76rem; color: var(--muted); }
+.song-card-desc { font-size: .72rem; color: var(--muted); opacity: .75; }
 .song-card-events { font-size: .7rem; color: var(--accent2); margin-top: 4px; }
 
 /* ─── Play screen ──────────────────────────────────────────────────────────── */

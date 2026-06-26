@@ -22,11 +22,21 @@ function buildSongList() {
   const list = document.getElementById("song-list");
   list.innerHTML = "";
   SONGS.filter(s => !s.id.startsWith("_")).forEach(song => {
+    const levelClass = song.level === 1 ? "beginner" : "advanced";
+    const levelText  = song.level === 1 ? "初級" : "上級";
+    const desc = song.level === 1
+      ? "ホームポジションで弾けます"
+      : "テンポが速め・応用向け";
+
     const card = document.createElement("div");
     card.className = "song-card";
     card.innerHTML = `
-      <span class="song-card-title">${song.title}</span>
+      <div class="song-card-top">
+        <span class="song-card-title">${song.title}</span>
+        <span class="level-badge ${levelClass}">${levelText}</span>
+      </div>
       <span class="song-card-composer">${song.composer}</span>
+      <span class="song-card-desc">${desc}</span>
       <span class="song-card-events">${song.events.length} ステップ</span>
     `;
     card.addEventListener("click", () => selectSong(song));

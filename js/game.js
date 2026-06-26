@@ -118,6 +118,9 @@ class Game {
       const ev = this.events[this.cursor];
       this.effects.scheduleFalling(ev.notes, ms, ev.key);
       this.effects.setNextKeys(ev.key, this.events[this.cursor + 1]?.key);
+      this.effects.setQueue(
+        this.events.slice(this.cursor, this.cursor + 5).map((e) => ({ key: e.key, notes: e.notes }))
+      );
     }
 
     this._autoTimer = setTimeout(() => {
