@@ -45,8 +45,8 @@ const FINGER_JP = [
 
 // ─── Layer labels ─────────────────────────────────────────────────────────────
 
-const LAYER_LABELS = ["", "+ ドラム !", "+ ストリングス !"];
-const LAYER_HUES   = [0, 200, 45];
+const LAYER_LABELS = ["", "+ ベース & ドラム !", "+ ストリングス !", "オーケストラ !!"];
+const LAYER_HUES   = [0, 200, 45, 18];
 
 // ─── QWERTY layout ───────────────────────────────────────────────────────────
 
@@ -686,7 +686,7 @@ class EffectsEngine {
 
     // COMBO — top-center, large number
     if (this.combo > 0) {
-      const hue      = this.layer >= 2 ? 45 : this.layer >= 1 ? 200 : 280;
+      const hue      = LAYER_HUES[this.layer] || 280;
       const numSize  = Math.min(54, 32 + Math.floor(this.combo * 0.25));
       ctx.save();
       ctx.textAlign = "center";

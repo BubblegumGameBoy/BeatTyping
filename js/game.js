@@ -157,10 +157,10 @@ class Game {
     if (key === target) {
       // Correct key — play immediately so the music follows the player's pace.
       // Early input is welcome and earns a bonus.
+      // Early input counts as PERFECT too (rewarded, not punished).
       let rating, bonus;
-      if (progress < this.EARLY_OK)        { rating = "FAST!";   bonus = 1; }
-      else if (progress >= this.PERFECT)   { rating = "PERFECT"; bonus = 1; }
-      else                                 { rating = "GOOD";    bonus = 0; }
+      if (progress < this.EARLY_OK || progress >= this.PERFECT) { rating = "PERFECT"; bonus = 1; }
+      else                                                      { rating = "GOOD";    bonus = 0; }
       this.effects.showRating(rating);
       this.missStreak = 0;
       clearTimeout(this._autoTimer);
@@ -178,13 +178,23 @@ class Game {
   }
 
   // Update combo + derived layer. hit=true increments (+bonus), hit=false resets.
+  // Layers: 0 piano · 1 +bass&drums · 2 +strings · 3 +brass (full orchestra)
   _applyCombo(hit, bonus = 0) {
     const prev = this.layer;
     if (hit) this.combo += 1 + bonus; else this.combo = 0;
-    this.layer = this.combo >= 20 ? 2 : this.combo >= 8 ? 1 : 0;
+    this.layer =
+      this.combo >= 36 ? 3 :
+      this.combo >= 20 ? 2 :
+      this.combo >= 8  ? 1 : 0;
     if (this.layer !== prev) this.effects.setLayer(this.layer, this.combo, hit);
     this.effects.combo = this.combo;
     this.effects.layer = this.layer;
+  }
+
+  // Lowest-pitched note in a chord (for the bass voice).
+  _lowestNote(notes) {
+    if (!notes || notes.length === 0) return null;
+    return notes.reduce((lo, n) => (noteMidi(n) < noteMidi(lo) ? n : lo), notes[0]);
   }
 
   _playNext(isManual, bonus = 0) {
@@ -206,28 +216,35 @@ class Game {
     this.audio.playNotes(event.notes, 0.85, 1.8);
     this.effects.trigger(event.notes);
 
-    // Layer 1+: bass piano accompaniment
-    if (this.layer >= 1 && event.accomp && event.accomp.length > 0) {
-      this.audio.playNotes(event.accomp, 0.38, 2.4);
-      this.effects.triggerAccomp(event.accomp);
+    const accomp = event.accomp || [];
+    const beat   = this.cursor % 4;
+
+    // Layer 1+: piano accompaniment + a real bass note for foundation
+    if (this.layer >= 1 && accomp.length > 0) {
+      this.audio.playNotes(accomp, 0.34, 2.4);
+      this.effects.triggerAccomp(accomp);
+      const bassNote = this._lowestNote(accomp);
+      if (bassNote) this.audio.playBass(bassNote, beat === 0 ? 1.2 : 0.7, 0.62);
     }
 
     // Layer 1+: Janissary drum pattern (4-event cycle = 1 bar of 2/4)
     if (this.layer >= 1) {
-      const beat = this.cursor % 4;
       if      (beat === 0) { this.audio.playKick(); }
       else if (beat === 1) { this.audio.playHihat(0.38); }
       else if (beat === 2) { this.audio.playSnare(); this.audio.playHihat(0.55); }
       else if (beat === 3) { this.audio.playHihat(0.28); }
     }
 
-    // Layer 2: string pad on downbeats, using mid/high chord tones from accomp
-    if (this.layer >= 2 && this.cursor % 4 === 0 && event.accomp) {
-      const chordNotes = event.accomp.filter((n) => {
-        const oct = parseInt(n.match(/\d+/)?.[0] ?? "0");
-        return oct >= 3;
-      });
-      this.audio.playPad(chordNotes);
+    // Layer 2+: sustained strings on downbeats, using mid/high chord tones
+    if (this.layer >= 2 && beat === 0 && accomp.length > 0) {
+      const chordNotes = accomp.filter((n) => (parseInt(n.match(/\d+/)?.[0] ?? "0")) >= 3);
+      if (chordNotes.length) this.audio.playStrings(chordNotes);
+    }
+
+    // Layer 3: brass stabs on the strong beats — the orchestral peak
+    if (this.layer >= 3 && (beat === 0 || beat === 2) && accomp.length > 0) {
+      const stab = accomp.filter((n) => (parseInt(n.match(/\d+/)?.[0] ?? "0")) >= 3);
+      if (stab.length) this.audio.playBrass(stab, beat === 0 ? 0.6 : 0.35, beat === 0 ? 0.5 : 0.32);
     }
 
     this.cursor++;
