@@ -135,8 +135,49 @@ html, body {
 .progress-bar { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent2), var(--accent)); transition: width .2s ease; }
 .progress-text { font-size: .76rem; color: var(--muted); width: 34px; text-align: right; flex-shrink: 0; }
 
-/* ─── Typing text area — hidden; canvas falling-notes replaces it ──────────── */
-#typing-area { display: none; }
+/* ─── Typing text area — note-mode hides it; word-mode shows the words ──────── */
+#typing-area {
+  display: none;            /* JS sets flex in word-mode */
+  position: relative; z-index: 2;
+  flex: 1;
+  flex-direction: column; align-items: center; justify-content: center;
+  gap: 30px; padding: 20px;
+  pointer-events: none;
+}
+.word-current { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.word-kana {
+  font-size: 2.7rem; font-weight: 600; color: #d3ccff; letter-spacing: .14em;
+  text-shadow: 0 0 26px rgba(150,130,255,.45);
+}
+.word-romaji {
+  display: flex; gap: 7px;
+  font-family: 'SF Mono', Menlo, monospace; font-size: 2.3rem; font-weight: 700;
+  letter-spacing: .06em;
+}
+.word-romaji .tc-done { color: #4fd16b; }
+.word-romaji .tc-cur  {
+  color: #fff; background: var(--accent); border-radius: 9px; padding: 0 9px;
+  box-shadow: 0 0 20px rgba(120,150,255,.7);
+}
+.word-romaji .tc-rest { color: #67677e; }
+.word-next { display: flex; gap: 20px; opacity: .55; flex-wrap: wrap; justify-content: center; }
+.word-next .nw { font-size: 1.15rem; color: #9b93c2; letter-spacing: .08em; }
+
+/* ─── Mode toggle (title screen) ─────────────────────────────────────────────── */
+#mode-toggle {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  margin: 4px 0 22px;
+}
+.mode-toggle-label { font-size: .74rem; color: var(--muted); letter-spacing: .12em; }
+.mode-opts { display: flex; gap: 0; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+.mode-opt {
+  background: transparent; border: none; color: var(--muted);
+  padding: 9px 22px; font-size: .86rem; cursor: pointer; font-family: inherit;
+  letter-spacing: .05em; transition: background .15s, color .15s;
+}
+.mode-opt:hover { color: var(--accent); }
+.mode-opt.active { background: var(--accent); color: #0c0c14; font-weight: 600; }
+.mode-toggle-note { font-size: .66rem; color: var(--muted); opacity: .7; letter-spacing: .03em; }
 
 /* ─── Footer ───────────────────────────────────────────────────────────────── */
 .play-footer {

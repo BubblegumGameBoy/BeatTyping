@@ -140,6 +140,11 @@ class EffectsEngine {
     this.nextKey  = null;
     this.nextKey2 = null;
 
+    // Render mode: "note" draws the falling lane + finger keyboard; "word"
+    // hides them (the DOM typing area shows words instead) but keeps the
+    // piano, combo and hit sparks.
+    this.mode = "note";
+
     this._running = false;
     this._raf     = null;
 
@@ -170,6 +175,10 @@ class EffectsEngine {
   // Called by game._reschedule() with the next ~5 events
   setQueue(queue) {
     this.queue = queue || [];
+  }
+
+  setMode(mode) {
+    this.mode = mode === "word" ? "word" : "note";
   }
 
   scheduleFalling(notes, durationMs, key) {
@@ -366,23 +375,27 @@ class EffectsEngine {
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
-    this._drawLane();
+    // The falling lane + tiles + hit zone are note-mode only. In word-mode the
+    // DOM typing area carries the gameplay; here we keep just the ambient FX.
+    if (this.mode !== "word") {
+      this._drawLane();
 
-    // Queue preview tiles (4 → 1, far to near)
-    for (let slot = 4; slot >= 1; slot--) {
-      const item = this.queue[slot];
-      if (item) this._drawQueueTile(slot, item.key, item.notes, false, 0);
+      // Queue preview tiles (4 → 1, far to near)
+      for (let slot = 4; slot >= 1; slot--) {
+        const item = this.queue[slot];
+        if (item) this._drawQueueTile(slot, item.key, item.notes, false, 0);
+      }
+
+      // Active falling tile (slot 0)
+      const now = performance.now();
+      if (this.fallingTile) {
+        const tile = this.fallingTile;
+        const progress = tile.hit ? 0 : Math.min(1, (now - tile.startTime) / tile.duration);
+        this._drawQueueTile(0, tile.key, tile.notes, true, progress);
+      }
+
+      this._drawHitZone();
     }
-
-    // Active falling tile (slot 0)
-    const now = performance.now();
-    if (this.fallingTile) {
-      const tile = this.fallingTile;
-      const progress = tile.hit ? 0 : Math.min(1, (now - tile.startTime) / tile.duration);
-      this._drawQueueTile(0, tile.key, tile.notes, true, progress);
-    }
-
-    this._drawHitZone();
 
     // Shockwave rings
     this.shockwaves.forEach((s) => {
@@ -430,7 +443,7 @@ class EffectsEngine {
       ctx.restore();
     });
 
-    this._drawFingerKeyboard();
+    if (this.mode !== "word") this._drawFingerKeyboard();
     drawPiano(ctx, canvas.width, canvas.height, this.pianoGlow);
     this._drawHUD();
   }
