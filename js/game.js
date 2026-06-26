@@ -37,6 +37,7 @@ class Game {
     // Layer system: 0 = melody only, 1 = +drums+bass, 2 = +pad
     this.combo      = 0;
     this.layer      = 0;
+    this.maxLayer   = 3; // tutorial songs cap this at 0 (pure piano, no orchestra)
     this.missStreak = 0; // consecutive misses; combo resets only at 3
 
     // Timing windows (as fraction of the tile's fall)
@@ -64,6 +65,8 @@ class Game {
     this.combo       = 0;
     this.layer       = 0;
     this.missStreak  = 0;
+    // Tutorial = plain piano only: no drums / bass / strings / brass layers.
+    this.maxLayer    = song.tutorial ? 0 : 3;
     this._assignKeys();
     clearTimeout(this._autoTimer);
   }
@@ -189,6 +192,7 @@ class Game {
       this.combo >= 36 ? 3 :
       this.combo >= 20 ? 2 :
       this.combo >= 8  ? 1 : 0;
+    if (this.layer > this.maxLayer) this.layer = this.maxLayer;
     if (this.layer !== prev) this.effects.setLayer(this.layer, this.combo, hit);
     this.effects.combo = this.combo;
     this.effects.layer = this.layer;
