@@ -217,21 +217,28 @@ class EffectsEngine {
       this.fallingTile.hitTime = performance.now();
     }
 
-    const cx    = this.canvas.width / 2;
-    const hitY  = this._hitZoneY();
+    const cx     = this.canvas.width / 2;
+    const hitY   = this._hitZoneY();
     const finger = FINGER_MAP[key] ?? 4;
     const color  = FINGER_COLORS[finger];
 
-    // Big tile shatter burst at hit zone center (finger color)
-    this._tileShatter(cx, hitY, color);
-
-    // Shockwave ring
-    this.shockwaves.push({ x: cx, y: hitY, r: 12, alpha: 0.85, color });
+    // Subtle: small glow ring + a few sparks only
+    this.shockwaves.push({ x: cx, y: hitY, r: 8, alpha: 0.65, color, small: true });
+    this._sparkBurst(cx, hitY, color, 6);
 
     // Piano key glow
     notes.forEach((note) => { this.pianoGlow[note] = 1.0; });
 
-    this.bgFlash = 0.18;
+    this.bgFlash = 0.06;
+  }
+
+  // Silently dismiss a tile that was auto-advanced (no explosion, no audio).
+  dismissTile() {
+    if (this.fallingTile && !this.fallingTile.hit) {
+      this.fallingTile.hit     = true;
+      this.fallingTile.hitTime = performance.now();
+      this.fallingTile.dismiss = true; // fades out without burst
+    }
   }
 
   setLayer(newLayer, combo, wasManual) {
@@ -306,8 +313,9 @@ class EffectsEngine {
     if (this.errorFlash > 0) this.errorFlash -= 0.06;
 
     this.shockwaves = this.shockwaves.filter((s) => {
-      s.r    += (LANE_W_HIT * 0.85 - s.r) * 0.14;
-      s.alpha -= 0.055;
+      const maxR = s.small ? LANE_W_HIT * 0.38 : LANE_W_HIT * 0.85;
+      s.r    += (maxR - s.r) * 0.18;
+      s.alpha -= s.small ? 0.10 : 0.055;
       return s.alpha > 0;
     });
 
@@ -320,62 +328,25 @@ class EffectsEngine {
     }
 
     if (this.fallingTile?.hit) {
-      if (performance.now() - this.fallingTile.hitTime > 520) this.fallingTile = null;
+      const ttl = this.fallingTile.dismiss ? 280 : 320;
+      if (performance.now() - this.fallingTile.hitTime > ttl) this.fallingTile = null;
     }
   }
 
-  // Shatter effect: tile breaks into colored square fragments + round sparks
-  _tileShatter(x, y, color) {
+  // Subtle spark burst — just a few small dots radiating outward.
+  _sparkBurst(x, y, color, count = 6) {
     const hue = _colorToHue(color);
-    // Square tile fragments
-    const frags = 10 + Math.floor(Math.random() * 6);
-    for (let i = 0; i < frags; i++) {
-      const angle = Math.random() * Math.PI * 2;
-      const speed = 3 + Math.random() * 8;
-      const size  = 5 + Math.random() * 10;
-      this.particles.push({
-        x: x + (Math.random() - 0.5) * 40,
-        y: y + (Math.random() - 0.5) * 20,
-        vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed - 3,
-        r: size,
-        hue: hue + (Math.random() - 0.5) * 30,
-        alpha: 1,
-        decay: 0.028 + Math.random() * 0.02,
-        square: true,
-        rot: Math.random() * Math.PI,
-        rotV: (Math.random() - 0.5) * 0.25,
-      });
-    }
-    // Bright sparks
-    for (let i = 0; i < 18; i++) {
-      const angle = Math.random() * Math.PI * 2;
-      const speed = 4 + Math.random() * 9;
-      this.particles.push({
-        x, y,
-        vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed - 4,
-        r: 1.5 + Math.random() * 2.5,
-        hue: hue + (Math.random() - 0.5) * 50,
-        alpha: 1,
-        decay: 0.030 + Math.random() * 0.025,
-      });
-    }
-  }
-
-  _burst(x, y, hue) {
-    const count = 10 + Math.floor(Math.random() * 6);
     for (let i = 0; i < count; i++) {
-      const angle = Math.random() * Math.PI * 2;
-      const speed = 2 + Math.random() * 5;
+      const angle = (Math.PI * 2 * i) / count + Math.random() * 0.4;
+      const speed = 2.5 + Math.random() * 3;
       this.particles.push({
         x, y,
         vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed - 2,
-        r: 2 + Math.random() * 3,
-        hue: hue + (Math.random() - 0.5) * 40,
-        alpha: 1,
-        decay: 0.022 + Math.random() * 0.022,
+        vy: Math.sin(angle) * speed - 1.5,
+        r: 1.5 + Math.random() * 1.5,
+        hue: hue + (Math.random() - 0.5) * 30,
+        alpha: 0.85,
+        decay: 0.038 + Math.random() * 0.02,
       });
     }
   }
@@ -543,15 +514,24 @@ class EffectsEngine {
 
     if (isActive) {
       if (this.fallingTile?.hit) {
-        // Hit burst: expand outward
         const elapsed = performance.now() - this.fallingTile.hitTime;
-        if (elapsed > 520) return;
-        const t = elapsed / 520;
-        y     = hitY;
-        scale = 1.0 + t * 0.6;
-        alpha = Math.max(0, 1 - t * 1.8);
-      } else {
+        if (this.fallingTile.dismiss) {
+          // Silent dismiss: fade out at the hit zone
+          if (elapsed > 260) return;
+          const t = elapsed / 260;
+          y     = hitY;
+          scale = SLOT_SCALES[0] * (1 - t);
+          alpha = Math.max(0, 0.5 - t * 0.6);
+        } else {
+          // Hit: quick bright flash then gone
+          if (elapsed > 280) return;
+          const t = elapsed / 280;
+          y     = hitY;
+          scale = 1.0 + t * 0.18;
+          alpha = Math.max(0, 1 - t * 2.2);
+        }
         // Animate from slot1 position down to hitZone
+      } else {
         const slot1Y = this._slotY(1);
         y     = slot1Y + (hitY - slot1Y) * progress;
         scale = SLOT_SCALES[1] + (SLOT_SCALES[0] - SLOT_SCALES[1]) * progress;

@@ -206,39 +206,44 @@ class Game {
     // breaks it — only 3 wrong presses on one note resets it (see _handleKey).
     if (isManual) this._applyCombo(true, bonus);
 
-    // Melody — always plays
-    this.audio.playNotes(event.notes, 0.85, 1.8);
-    this.effects.trigger(event.notes);
+    if (!isManual) {
+      // Auto-advance (miss): dismiss tile silently, no audio.
+      this.effects.dismissTile();
+    } else {
+      // ── Correct hit: play all melody notes simultaneously ──────────────
+      this.audio.playNotes(event.notes, 0.85, 1.8);
+      this.effects.trigger(event.notes);
 
-    const accomp = event.accomp || [];
-    const beat   = this.cursor % 4;
+      const accomp = event.accomp || [];
+      const beat   = this.cursor % 4;
 
-    // Layer 1+: piano accompaniment + a real bass note for foundation
-    if (this.layer >= 1 && accomp.length > 0) {
-      this.audio.playNotes(accomp, 0.34, 2.4);
-      this.effects.triggerAccomp(accomp);
-      const bassNote = this._lowestNote(accomp);
-      if (bassNote) this.audio.playBass(bassNote, beat === 0 ? 1.2 : 0.7, 0.62);
-    }
+      // Layer 1+: piano accompaniment + cello bass note
+      if (this.layer >= 1 && accomp.length > 0) {
+        this.audio.playNotes(accomp, 0.34, 2.4);
+        this.effects.triggerAccomp(accomp);
+        const bassNote = this._lowestNote(accomp);
+        if (bassNote) this.audio.playBass(bassNote, beat === 0 ? 1.2 : 0.7, 0.62);
+      }
 
-    // Layer 1+: Janissary drum pattern (4-event cycle = 1 bar of 2/4)
-    if (this.layer >= 1) {
-      if      (beat === 0) { this.audio.playKick(); }
-      else if (beat === 1) { this.audio.playHihat(0.38); }
-      else if (beat === 2) { this.audio.playSnare(); this.audio.playHihat(0.55); }
-      else if (beat === 3) { this.audio.playHihat(0.28); }
-    }
+      // Layer 1+: Janissary drum pattern (4-event cycle = 1 bar of 2/4)
+      if (this.layer >= 1) {
+        if      (beat === 0) { this.audio.playKick(); }
+        else if (beat === 1) { this.audio.playHihat(0.38); }
+        else if (beat === 2) { this.audio.playSnare(); this.audio.playHihat(0.55); }
+        else if (beat === 3) { this.audio.playHihat(0.28); }
+      }
 
-    // Layer 2+: sustained strings on downbeats, using mid/high chord tones
-    if (this.layer >= 2 && beat === 0 && accomp.length > 0) {
-      const chordNotes = accomp.filter((n) => (parseInt(n.match(/\d+/)?.[0] ?? "0")) >= 3);
-      if (chordNotes.length) this.audio.playStrings(chordNotes);
-    }
+      // Layer 2+: sustained violin strings on downbeats
+      if (this.layer >= 2 && beat === 0 && accomp.length > 0) {
+        const chordNotes = accomp.filter((n) => (parseInt(n.match(/\d+/)?.[0] ?? "0")) >= 3);
+        if (chordNotes.length) this.audio.playStrings(chordNotes);
+      }
 
-    // Layer 3: brass stabs on the strong beats — the orchestral peak
-    if (this.layer >= 3 && (beat === 0 || beat === 2) && accomp.length > 0) {
-      const stab = accomp.filter((n) => (parseInt(n.match(/\d+/)?.[0] ?? "0")) >= 3);
-      if (stab.length) this.audio.playBrass(stab, beat === 0 ? 0.6 : 0.35, beat === 0 ? 0.5 : 0.32);
+      // Layer 3: french-horn stabs on the strong beats
+      if (this.layer >= 3 && (beat === 0 || beat === 2) && accomp.length > 0) {
+        const stab = accomp.filter((n) => (parseInt(n.match(/\d+/)?.[0] ?? "0")) >= 3);
+        if (stab.length) this.audio.playBrass(stab, beat === 0 ? 0.6 : 0.35, beat === 0 ? 0.5 : 0.32);
+      }
     }
 
     this.cursor++;
