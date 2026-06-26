@@ -48,23 +48,24 @@ const SONGS = [
       {notes:["A4"],  accomp:["A2","E3","A3"]},
 
       // ===== B Section =====
-      // C major / F major contrasting episode — right hand doubles in thirds
-      {notes:["B4","G4"],  accomp:["E2","B2","E3"]},
-      {notes:["C5","E4"],  accomp:["C3","G3"]},
-      {notes:["D5","F4"],  accomp:["G2","D3","G3","B3"]},
-      {notes:["E5","G4"],  accomp:["C3","G3","C4"]},
-      {notes:["F5","A4"],  accomp:["F2","C3","F3","A3"]},
-      {notes:["E5","G4"],  accomp:["C3","G3"]},
-      {notes:["D5","F4"],  accomp:["G2","B2","D3"]},
-      {notes:["C5","E4"],  accomp:["F2","A2","C3"]},
-      {notes:["B4","D4"],  accomp:["E2","G#2","B2"]},
-      {notes:["C5","E4"],  accomp:["A2","E3","A3"]},
-      {notes:["D5","F4"],  accomp:["A2","C3","E3"]},
-      {notes:["E5","G4"],  accomp:["A2","E3","A3"]},
-      {notes:["E4"],       accomp:["E2","G#2","B2","E3"]},
-      {notes:["D5"],       accomp:["E2","B2"]},
-      {notes:["C5"],       accomp:["A2","E3"]},
-      {notes:["B4"],       accomp:["E2","B2","E3"]},
+      // First episode — C / G / F major. Single-note melody (as in the
+      // original); clean diatonic accompaniment so nothing clashes.
+      {notes:["B4"],  accomp:["G2","D3","G3"]},   // G7 → leading into C
+      {notes:["C5"],  accomp:["C3","E3","G3"]},   // C
+      {notes:["D5"],  accomp:["G2","B2","D3"]},   // G
+      {notes:["E5"],  accomp:["C3","G3","C4"]},   // C
+      {notes:["G4"],  accomp:["C3","E3","G3"]},   // C
+      {notes:["F5"],  accomp:["F2","C3","F3","A3"]}, // F
+      {notes:["E5"],  accomp:["C3","E3","G3"]},   // C
+      {notes:["D5"],  accomp:["G2","B2","D3"]},   // G
+      {notes:["F4"],  accomp:["F2","A2","C3"]},   // F
+      {notes:["E5"],  accomp:["C3","E3","G3"]},   // C
+      {notes:["D5"],  accomp:["G2","D3"]},        // G
+      {notes:["C5"],  accomp:["C3","E3","G3"]},   // C
+      {notes:["E4"],  accomp:["E2","G#2","B2","E3"]}, // E7 (turn to A minor)
+      {notes:["D5"],  accomp:["E2","B2"]},        // E
+      {notes:["C5"],  accomp:["A2","E3","A3"]},   // Am
+      {notes:["B4"],  accomp:["E2","G#2","B2"]},  // E7
       // return to A
       {notes:["E5"],  accomp:["A2"]},
       {notes:["D#5"], accomp:[]},
@@ -191,7 +192,7 @@ const SONGS = [
     title: "トルコ行進曲",
     composer: "W.A. モーツァルト",
     level: 2,
-    bpm: 130,
+    bpm: 60,
     events: [
       // ===== A Section — Rondo theme (A minor) =====
       {notes:["B4"],  accomp:["A2"]},
