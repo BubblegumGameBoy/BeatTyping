@@ -59,8 +59,9 @@ const KB_ROW_STAGGER = [0, 0.45, 0.9];
 
 // ─── Piano constants ──────────────────────────────────────────────────────────
 
-const PIANO_HEIGHT       = 110;
-const PIANO_OCTAVES      = 5;
+const PIANO_HEIGHT        = 110;
+const PIANO_BOTTOM_MARGIN = 58; // leaves room for the play-footer below the piano
+const PIANO_OCTAVES       = 5;
 const PIANO_START_OCTAVE = 2;
 const WHITE_NOTES        = ["C","D","E","F","G","A","B"];
 const HAS_BLACK_RIGHT    = [true, true, false, true, true, true, false];
@@ -249,7 +250,7 @@ class EffectsEngine {
 
   // ─── Layout ─────────────────────────────────────────────────────────────────
 
-  _pianoTop()  { return this.canvas.height - PIANO_HEIGHT - 16; }
+  _pianoTop()  { return this.canvas.height - PIANO_HEIGHT - PIANO_BOTTOM_MARGIN; }
 
   _kbMetrics() {
     const keyW = Math.min(46, this.canvas.width * 0.052);
@@ -775,7 +776,7 @@ function drawPiano(ctx, width, height, glow) {
   const blackH = whiteH * 0.62;
   const blackW = keyW * 0.6;
   const startX = (width - totalWhite * keyW) / 2;
-  const startY = height - whiteH - 16;
+  const startY = height - whiteH - PIANO_BOTTOM_MARGIN;
 
   // White keys
   for (let o = 0; o < PIANO_OCTAVES; o++) {

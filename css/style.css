@@ -91,7 +91,12 @@ html, body {
 .song-card-events { font-size: .7rem; color: var(--accent2); margin-top: 4px; }
 
 /* ─── Play screen ──────────────────────────────────────────────────────────── */
-#play-screen { flex-direction: column; align-items: stretch; background: var(--bg); }
+#play-screen {
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: space-between; /* header pinned top, footer pinned bottom */
+  background: var(--bg);
+}
 
 #effect-canvas {
   position: absolute; inset: 0;
