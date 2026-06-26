@@ -114,6 +114,9 @@ class Game {
     clearTimeout(this._autoTimer);
     const ms = 60000 / this.bpm;
 
+    // New note becomes active → reset the per-note miss counter.
+    this.missStreak = 0;
+
     this._noteStart = performance.now();
     this._noteMs    = ms;
 
@@ -167,13 +170,11 @@ class Game {
       this._playNext(true, bonus);
       if (this.autoAdvance && this.active) this._reschedule();
     } else {
-      // Wrong key — flash; break combo only after 3 consecutive misses.
+      // Wrong key — flash. Combo only breaks after 3 misses on THIS note
+      // (the counter resets when the next note arrives).
       this.missStreak++;
       this.effects.flashError();
-      if (this.missStreak >= 3) {
-        this._applyCombo(false);
-        this.missStreak = 0;
-      }
+      if (this.missStreak >= 3) this._applyCombo(false);
     }
   }
 
@@ -201,16 +202,9 @@ class Game {
     if (this.cursor >= this.events.length) return;
 
     const event = this.events[this.cursor];
-    if (isManual) {
-      this._applyCombo(true, bonus);
-    } else {
-      // Auto-advance counts as a miss; combo only breaks after 3 in a row.
-      this.missStreak++;
-      if (this.missStreak >= 3) {
-        this._applyCombo(false);
-        this.missStreak = 0;
-      }
-    }
+    // Manual hit grows the combo. Auto-advance (timeout) neither grows nor
+    // breaks it — only 3 wrong presses on one note resets it (see _handleKey).
+    if (isManual) this._applyCombo(true, bonus);
 
     // Melody — always plays
     this.audio.playNotes(event.notes, 0.85, 1.8);

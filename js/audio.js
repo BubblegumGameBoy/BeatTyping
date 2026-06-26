@@ -98,32 +98,41 @@ class AudioEngine {
       harmonicity: 5.1, modulationIndex: 32, resonance: 4000, octaves: 1.5,
     }).connect(drumVerb).toDestination();
 
-    // ── Strings: warm sustained section (sawtooth softened by a lowpass) ──
-    const stringFilter = new Tone.Filter({ type: "lowpass", frequency: 2200, rolloff: -24 })
-      .connect(stringVerb).toDestination();
-    this.strings = new Tone.PolySynth(Tone.Synth, {
-      oscillator: { type: "fatsawtooth", count: 3, spread: 22 },
-      envelope: { attack: 0.45, decay: 0.3, sustain: 0.70, release: 3.0 },
-      volume: -12,
-    }).connect(stringFilter);
+    // ── Orchestral instruments: real recorded samples (tonejs-instruments) ──
+    const ORCH = "https://nbrosowsky.github.io/tonejs-instruments/samples/";
 
-    // ── Bass: low foundation (filtered triangle, like pizzicato cello/bass) ──
-    this.bass = new Tone.MonoSynth({
-      oscillator: { type: "triangle" },
-      envelope: { attack: 0.02, decay: 0.25, sustain: 0.55, release: 0.9 },
-      filter: { type: "lowpass", frequency: 900, rolloff: -24 },
-      filterEnvelope: { attack: 0.02, decay: 0.2, sustain: 0.3, baseFrequency: 200, octaves: 2.5 },
-      volume: -8,
-    }).connect(drumVerb).toDestination();
+    // Violin section — sustained strings (harmony pad)
+    this.strings = new Tone.Sampler({
+      urls: {
+        C4: "C4.mp3", E4: "E4.mp3", G4: "G4.mp3", A4: "A4.mp3",
+        C5: "C5.mp3", E5: "E5.mp3", G5: "G5.mp3", A5: "A5.mp3",
+      },
+      baseUrl: ORCH + "violin/",
+      release: 1.6,
+      volume: -11,
+    }).connect(stringVerb).toDestination();
 
-    // ── Brass: bright stabs for the orchestral peak ──
-    const brassFilter = new Tone.Filter({ type: "lowpass", frequency: 3000, rolloff: -12 })
-      .connect(brassVerb).toDestination();
-    this.brass = new Tone.PolySynth(Tone.Synth, {
-      oscillator: { type: "sawtooth" },
-      envelope: { attack: 0.06, decay: 0.25, sustain: 0.45, release: 0.5 },
-      volume: -14,
-    }).connect(brassFilter);
+    // Cello — low strings, the bass foundation
+    this.bass = new Tone.Sampler({
+      urls: {
+        C2: "C2.mp3", E2: "E2.mp3", G2: "G2.mp3",
+        C3: "C3.mp3", E3: "E3.mp3", G3: "G3.mp3", C4: "C4.mp3",
+      },
+      baseUrl: ORCH + "cello/",
+      release: 0.9,
+      volume: -6,
+    }).connect(stringVerb).toDestination();
+
+    // French horn — warm brass stabs for the orchestral peak
+    this.brass = new Tone.Sampler({
+      urls: {
+        A1: "A1.mp3", C2: "C2.mp3", G2: "G2.mp3",
+        F3: "F3.mp3", A3: "A3.mp3", C4: "C4.mp3", D5: "D5.mp3",
+      },
+      baseUrl: ORCH + "french-horn/",
+      release: 0.6,
+      volume: -9,
+    }).connect(brassVerb).toDestination();
 
     this.drumsReady    = true;
     this._drumsLoading = false;
@@ -156,30 +165,28 @@ class AudioEngine {
     this.hihat.triggerAttackRelease("32n", Tone.now(), velocity);
   }
 
-  // Sustained string chord; auto-releases after ~2 bars.
-  playStrings(notes, hold = 2.4) {
-    if (!this.drumsReady || !notes || notes.length === 0) return;
+  // Sustained string chord (violin section).
+  playStrings(notes, hold = 2.4, velocity = 0.55) {
+    if (!this.strings || !this.strings.loaded || !notes || notes.length === 0) return;
     try {
-      this.strings.releaseAll();
-      this.strings.triggerAttack(notes, Tone.now(), 0.32);
-      this.strings.triggerRelease(notes, Tone.now() + hold);
+      this.strings.triggerAttackRelease(notes, hold, Tone.now(), velocity);
     } catch (e) {}
   }
 
   // Backwards-compatible alias.
   playPad(notes) { this.playStrings(notes); }
 
-  // Low bass note — the foundation under the harmony.
-  playBass(note, duration = 0.9, velocity = 0.6) {
-    if (!this.drumsReady || !note) return;
+  // Low bass note (cello) — the foundation under the harmony.
+  playBass(note, duration = 0.9, velocity = 0.8) {
+    if (!this.bass || !this.bass.loaded || !note) return;
     try {
       this.bass.triggerAttackRelease(note, duration, Tone.now(), velocity);
     } catch (e) {}
   }
 
-  // Brass stab chord — short, punchy accent for the orchestral peak.
-  playBrass(notes, duration = 0.5, velocity = 0.5) {
-    if (!this.drumsReady || !notes || notes.length === 0) return;
+  // Brass stab chord (french horn) — accent for the orchestral peak.
+  playBrass(notes, duration = 0.5, velocity = 0.6) {
+    if (!this.brass || !this.brass.loaded || !notes || notes.length === 0) return;
     try {
       this.brass.triggerAttackRelease(notes, duration, Tone.now(), velocity);
     } catch (e) {}
