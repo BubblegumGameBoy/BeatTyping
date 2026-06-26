@@ -6,36 +6,91 @@ const SONGS = [
   {
     id: "tutorial_clock",
     title: "大きな古時計",
-    composer: "チュートリアル",
+    composer: "H.C. Work  (チュートリアル)",
     level: 0,
     tutorial: true,
-    bpm: 56,
+    bpm: 58,
+    // Key assignments (determined by frequency):
+    //   G4→F(左人差) C4→J(右人差) E4→D(左中) D4→K(右中)
+    //   B3→S(左薬)   A4→L(右薬)   A3→A(左小) F4→G
     events: [
-      // ── 出だし「おおきな のっぽの」──
-      {notes:["C5"], accomp:[], hint:"まずはホームポジション！左手を A S D F、右手を J K L に置こう"},
-      {notes:["C5"], accomp:[], hint:"画面下のキーボードで光ったキーを押すよ"},
-      {notes:["C5"], accomp:[], hint:"いちばん下の『◯◯指』の表示を見て、その指で押そう"},
-      {notes:["C5"], accomp:[], hint:"押したら指はホームポジションに戻すのがコツ"},
-      {notes:["E5"], accomp:[], hint:"少し上の段のキーも、ホームから指を伸ばして押すよ"},
-      {notes:["G5"], accomp:[], hint:"あせらなくてOK。タイルがラインに来たら押そう"},
-      // ── 「ふるどけい」──
-      {notes:["G5"], accomp:[]},
-      {notes:["F5"], accomp:[]},
-      {notes:["E5"], accomp:[]},
-      {notes:["D5"], accomp:[], hint:"いい調子！リズムに乗ってきたね"},
-      // ── 「おじいさんの とけい」──
-      {notes:["C5"], accomp:[]},
-      {notes:["C5"], accomp:[]},
-      {notes:["C5"], accomp:[]},
-      {notes:["C5"], accomp:[]},
-      {notes:["E5"], accomp:[]},
-      {notes:["G5"], accomp:[]},
-      {notes:["A5"], accomp:[], hint:"ここまでで主要な指の動きはバッチリ"},
-      {notes:["G5"], accomp:[]},
-      {notes:["F5"], accomp:[]},
-      {notes:["E5"], accomp:[]},
-      {notes:["D5"], accomp:[]},
-      {notes:["C5"], accomp:[], hint:"完了！この感覚で曲を選んで演奏してみよう"},
+      // ══ Verse A ══════════════════════════════════════════════════════
+      // 「おおきな のっぽの」
+      {notes:["G4"], accomp:["C3","E3","G3"], hint:"Fキー！左手の人差し指でスタート"},
+      {notes:["C4"], accomp:["C3","E3","G3"], hint:"Jキー！右手の人差し指"},
+      {notes:["B3"], accomp:[],               hint:"Sキー — 左手の薬指"},
+      {notes:["C4"], accomp:[],               hint:"Jにもどろう"},
+      {notes:["D4"], accomp:["G2","B2","D3"], hint:"Kキー — 右手の中指"},
+      {notes:["C4"], accomp:[],               hint:"Jにもどろう"},
+      {notes:["D4"], accomp:[],               hint:"Kキー、もう一度"},
+      // 「ふるどけい」
+      {notes:["E4"], accomp:["C3","E3","G3"], hint:"Dキー — 左手の中指"},
+      {notes:["E4"], accomp:[],               hint:"もう一度Dキー！"},
+      {notes:["F4"], accomp:["F2","A2","C3"], hint:"Gキー — 人差し指を少し右へ"},
+      {notes:["E4"], accomp:[],               hint:"Dにもどろう"},
+      {notes:["A4"], accomp:["F2","A2","C3"], hint:"Lキー — 右手の薬指！"},
+      // 「おじいさんの とけい」
+      {notes:["D4"], accomp:["G2","B2","D3"], hint:"Kキーにもどろう"},
+      {notes:["D4"], accomp:[],               hint:"もう一度K！"},
+      {notes:["C4"], accomp:["C3","E3","G3"], hint:"Jにもどろう"},
+      {notes:["C4"], accomp:[]},
+      {notes:["C4"], accomp:[],               hint:"いい調子！"},
+      {notes:["B3"], accomp:[],               hint:"Sキー — 左薬指"},
+      // 「おじいさんの たんじょうびに」
+      {notes:["A3"], accomp:[],               hint:"Aキー！左手の小指"},
+      {notes:["B3"], accomp:[],               hint:"Sにもどろう"},
+      {notes:["C4"], accomp:["C3","E3","G3"], hint:"前半ゴール！"},
+
+      // ══ Chorus ═══════════════════════════════════════════════════════
+      // 「おおきな のっぽのふるどけい」
+      {notes:["G4"], accomp:["C3","E3","G3"], hint:"サビ！Fキーが続くよ"},
+      {notes:["G4"], accomp:[],               hint:"Fキー！"},
+      {notes:["C4"], accomp:["C3","G3"],      hint:"Jへ！"},
+      {notes:["G4"], accomp:[],               hint:"Fにもどろう"},
+      {notes:["G4"], accomp:[]},
+      {notes:["A4"], accomp:["F2","A2","C3"], hint:"Lキー！"},
+      {notes:["G4"], accomp:[],               hint:"Fにもどろう"},
+      {notes:["G4"], accomp:[]},
+      {notes:["E4"], accomp:["C3","E3","G3"], hint:"Dキー！"},
+      {notes:["G4"], accomp:[],               hint:"Fにもどろう"},
+      {notes:["E4"], accomp:[]},
+      // 「おじいさんといっしょに」
+      {notes:["G4"], accomp:["C3","E3","G3"], hint:"リズムに乗ってきた！"},
+      {notes:["G4"], accomp:[]},
+      {notes:["C4"], accomp:["C3","G3"],      hint:"Jキー！"},
+      {notes:["G4"], accomp:[],               hint:"Fにもどろう"},
+      {notes:["G4"], accomp:[]},
+      {notes:["A4"], accomp:["F2","A2","C3"], hint:"Lキー！"},
+      {notes:["G4"], accomp:[],               hint:"Fにもどろう"},
+      {notes:["G4"], accomp:[]},
+      {notes:["E4"], accomp:["C3","E3","G3"], hint:"Dキー！"},
+      {notes:["G4"], accomp:["C3","E3","G3"], hint:"Fでサビ終了！"},
+
+      // ══ Final Verse ══════════════════════════════════════════════════
+      // 「いまもうごいている」
+      {notes:["E4"], accomp:[],               hint:"最後のセクション！D"},
+      {notes:["G4"], accomp:[],               hint:"F"},
+      {notes:["G4"], accomp:[],               hint:"F"},
+      {notes:["C4"], accomp:["C3","E3","G3"], hint:"J"},
+      {notes:["C4"], accomp:[],               hint:"J"},
+      {notes:["D4"], accomp:["G2","B2","D3"], hint:"Kキー！"},
+      // 「おじいさんの とけい」
+      {notes:["E4"], accomp:["C3","E3","G3"], hint:"D"},
+      {notes:["E4"], accomp:[]},
+      {notes:["F4"], accomp:["F2","A2","C3"], hint:"Gキー"},
+      {notes:["E4"], accomp:[],               hint:"D"},
+      {notes:["A4"], accomp:["F2","A2","C3"], hint:"Lキー！"},
+      {notes:["D4"], accomp:["G2","B2","D3"], hint:"K"},
+      {notes:["D4"], accomp:[],               hint:"K"},
+      {notes:["C4"], accomp:["C3","E3","G3"], hint:"J"},
+      {notes:["C4"], accomp:[]},
+      {notes:["C4"], accomp:[],               hint:"あと少し！"},
+      {notes:["B3"], accomp:[],               hint:"S"},
+      {notes:["A3"], accomp:[],               hint:"Aキー！小指"},
+      {notes:["B3"], accomp:[],               hint:"S"},
+      {notes:["C4"], accomp:["C3","E3","G3"]},
+      // Final note
+      {notes:["C4"], accomp:["C3","E3","G3"], hint:"おめでとう！大きな古時計をクリア！"},
     ],
   },
 

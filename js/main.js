@@ -64,7 +64,13 @@ async function selectSong(song) {
   setProgress(0);
 
   showScreen("play-screen");
-  setTimeout(() => game.start(), 400);
+  if (song.tutorial) {
+    setTimeout(() => {
+      document.getElementById("homepos-overlay").classList.add("active");
+    }, 400);
+  } else {
+    setTimeout(() => game.start(), 400);
+  }
 }
 
 // ─── Progress ─────────────────────────────────────────────────────────────────
@@ -118,8 +124,14 @@ window.addEventListener("DOMContentLoaded", () => {
   // Beat pulse on effects canvas
   game.onBeat = () => effectsEngine.pulse();
 
+  document.getElementById("homepos-start-btn").addEventListener("click", () => {
+    document.getElementById("homepos-overlay").classList.remove("active");
+    game.start();
+  });
+
   document.getElementById("back-btn").addEventListener("click", () => {
     game.stop();
+    document.getElementById("homepos-overlay").classList.remove("active");
     showScreen("title-screen");
     effectsEngine.start();
   });
