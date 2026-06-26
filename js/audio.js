@@ -14,6 +14,14 @@ class AudioEngine {
     this.brass   = null;  // brass stabs for the orchestral peak
     this.drumsReady    = false;
     this._drumsLoading = false;
+
+    // ── Steady backing clock (Tone.Transport) ──────────────────────────
+    // The rhythm section runs on a fixed tempo grid so it never drifts with
+    // the player's (uneven) keystrokes. The melody stays keypress-driven;
+    // the backing just follows whatever chord the player is currently on.
+    this._backingId    = null;   // scheduleRepeat id
+    this.backingLayer  = 0;      // 0 = silent, grows with combo layer
+    this.backingChord  = null;   // current harmony (root first)
   }
 
   async init() {
@@ -109,7 +117,7 @@ class AudioEngine {
       },
       baseUrl: ORCH + "violin/",
       release: 1.6,
-      volume: -11,
+      volume: -17,
     }).connect(stringVerb).toDestination();
 
     // Cello — low strings, the bass foundation
@@ -120,7 +128,7 @@ class AudioEngine {
       },
       baseUrl: ORCH + "cello/",
       release: 0.9,
-      volume: -6,
+      volume: -13,
     }).connect(stringVerb).toDestination();
 
     // French horn — warm brass stabs for the orchestral peak
@@ -131,11 +139,87 @@ class AudioEngine {
       },
       baseUrl: ORCH + "french-horn/",
       release: 0.6,
-      volume: -9,
+      volume: -18,
     }).connect(brassVerb).toDestination();
 
     this.drumsReady    = true;
     this._drumsLoading = false;
+  }
+
+  // ── Backing clock ────────────────────────────────────────────────────
+  // Start the steady rhythm section. Safe to call before the orchestral
+  // samples finish loading: the per-tick callback no-ops until they are
+  // ready and the layer is ≥ 1.
+  startBacking(bpm = 120) {
+    if (this._backingId !== null) { this.setBackingBpm(bpm); return; }
+    Tone.Transport.bpm.value = bpm;
+    let step = 0;
+    this._backingId = Tone.Transport.scheduleRepeat((time) => {
+      this._backingTick(step % 8, time); // 8 eighth-notes = one 4/4 bar
+      step++;
+    }, "8n");
+    Tone.Transport.start();
+  }
+
+  stopBacking() {
+    if (this._backingId !== null) {
+      Tone.Transport.clear(this._backingId);
+      this._backingId = null;
+    }
+    Tone.Transport.stop();
+    Tone.Transport.position = 0;
+    this.backingLayer = 0;
+    this.backingChord = null;
+  }
+
+  setBackingBpm(bpm)     { Tone.Transport.bpm.value = bpm; }
+  setBackingLayer(layer) { this.backingLayer = layer; }
+  setBackingChord(notes) { if (notes && notes.length) this.backingChord = notes; }
+
+  // Re-voice a chord into a single octave so the violin / horn samplers stay
+  // in their recorded range (no extreme pitch-shifting = no mud).
+  _chordInOctave(chord, oct) {
+    const seen = new Set(), out = [];
+    chord.forEach((n) => {
+      const m = n.match(/^([A-G]#?)/);
+      if (!m) return;
+      const name = m[1] + oct;
+      if (!seen.has(name)) { seen.add(name); out.push(name); }
+    });
+    return out;
+  }
+
+  // One eighth-note of the backing pattern. pos = 0..7 within the bar.
+  _backingTick(pos, time) {
+    const L = this.backingLayer;
+    if (L < 1 || !this.drumsReady) return;
+    const chord = this.backingChord;
+    const down  = (pos === 0 || pos === 4); // beats 1 & 3
+
+    // ── Percussion ──
+    if (down) this.kick.triggerAttackRelease("C1", "8n", time, 0.5);
+    if (L >= 2 && (pos === 2 || pos === 6)) this.snare.triggerAttackRelease("8n", time, 0.36);
+    if (pos % 2 === 0) {
+      const hh = (L >= 3 ? 0.26 : 0.18);
+      this.hihat.triggerAttackRelease("32n", time, pos % 4 === 0 ? hh : hh * 0.7);
+    }
+
+    // ── Cello bass on the strong beats (root of the current chord) ──
+    if (chord && down && this.bass && this.bass.loaded) {
+      this.bass.triggerAttackRelease(chord[0], pos === 0 ? 1.0 : 0.6, time, 0.5);
+    }
+
+    // ── Violin pad on the downbeat (layer 2+) ──
+    if (L >= 2 && pos === 0 && chord && this.strings && this.strings.loaded) {
+      const s = this._chordInOctave(chord, 4);
+      if (s.length) this.strings.triggerAttackRelease(s, 1.9, time, 0.4);
+    }
+
+    // ── French-horn stabs on beats 1 & 3 (layer 3) ──
+    if (L >= 3 && down && chord && this.brass && this.brass.loaded) {
+      const b = this._chordInOctave(chord, 3);
+      if (b.length) this.brass.triggerAttackRelease(b, pos === 0 ? 0.5 : 0.3, time, pos === 0 ? 0.4 : 0.3);
+    }
   }
 
   // Play a list of note strings simultaneously.

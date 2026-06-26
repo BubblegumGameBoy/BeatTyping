@@ -90,6 +90,7 @@ class Game {
   setBpm(bpm) {
     this.bpm = Math.max(20, Math.min(400, Math.round(bpm)));
     if (this.onBpmChange) this.onBpmChange(this.bpm);
+    this.audio.setBackingBpm(this.bpm);
     if (this.active && this.autoAdvance) this._reschedule();
   }
 
@@ -102,6 +103,10 @@ class Game {
     this.missStreak  = 0;
     this.active      = true;
     this.audio.initDrumsAndPad();
+    // Steady rhythm-section clock (silent until combo reaches layer 1).
+    this.audio.setBackingChord(null);
+    this.audio.setBackingLayer(0);
+    this.audio.startBacking(this.bpm);
     document.addEventListener("keydown",     this._keyHandler);
     document.addEventListener("pointerdown", this._keyHandler);
     if (this.autoAdvance) this._reschedule();
@@ -110,6 +115,7 @@ class Game {
   stop() {
     this.active = false;
     clearTimeout(this._autoTimer);
+    this.audio.stopBacking();
     document.removeEventListener("keydown",     this._keyHandler);
     document.removeEventListener("pointerdown", this._keyHandler);
   }
@@ -194,6 +200,7 @@ class Game {
       this.combo >= 8  ? 1 : 0;
     if (this.layer > this.maxLayer) this.layer = this.maxLayer;
     if (this.layer !== prev) this.effects.setLayer(this.layer, this.combo, hit);
+    this.audio.setBackingLayer(this.layer);
     this.effects.combo = this.combo;
     this.effects.layer = this.layer;
   }
@@ -216,39 +223,17 @@ class Game {
       // Auto-advance (miss): dismiss tile silently, no audio.
       this.effects.dismissTile();
     } else {
-      // ── Correct hit: play all melody notes simultaneously ──────────────
+      // ── Correct hit: sound the melody note(s) only. The rhythm section
+      //    (drums / bass / strings / brass) plays on the steady backing
+      //    clock in the audio engine — here we just tell it which chord
+      //    the player is currently on so the harmony follows along.
       this.audio.playNotes(event.notes, 0.85, 1.8);
       this.effects.trigger(event.notes);
 
       const accomp = event.accomp || [];
-      const beat   = this.cursor % 4;
-
-      // Layer 1+: piano accompaniment + cello bass note
-      if (this.layer >= 1 && accomp.length > 0) {
-        this.audio.playNotes(accomp, 0.34, 2.4);
+      if (accomp.length > 0) {
+        this.audio.setBackingChord(accomp);
         this.effects.triggerAccomp(accomp);
-        const bassNote = this._lowestNote(accomp);
-        if (bassNote) this.audio.playBass(bassNote, beat === 0 ? 1.2 : 0.7, 0.62);
-      }
-
-      // Layer 1+: Janissary drum pattern (4-event cycle = 1 bar of 2/4)
-      if (this.layer >= 1) {
-        if      (beat === 0) { this.audio.playKick(); }
-        else if (beat === 1) { this.audio.playHihat(0.38); }
-        else if (beat === 2) { this.audio.playSnare(); this.audio.playHihat(0.55); }
-        else if (beat === 3) { this.audio.playHihat(0.28); }
-      }
-
-      // Layer 2+: sustained violin strings on downbeats
-      if (this.layer >= 2 && beat === 0 && accomp.length > 0) {
-        const chordNotes = accomp.filter((n) => (parseInt(n.match(/\d+/)?.[0] ?? "0")) >= 3);
-        if (chordNotes.length) this.audio.playStrings(chordNotes);
-      }
-
-      // Layer 3: french-horn stabs on the strong beats
-      if (this.layer >= 3 && (beat === 0 || beat === 2) && accomp.length > 0) {
-        const stab = accomp.filter((n) => (parseInt(n.match(/\d+/)?.[0] ?? "0")) >= 3);
-        if (stab.length) this.audio.playBrass(stab, beat === 0 ? 0.6 : 0.35, beat === 0 ? 0.5 : 0.32);
       }
     }
 
@@ -262,6 +247,7 @@ class Game {
     if (this.cursor >= this.events.length) {
       this.active = false;
       clearTimeout(this._autoTimer);
+      this.audio.stopBacking();
       this.effects.setNextKeys(null, null);
       document.removeEventListener("keydown",     this._keyHandler);
       document.removeEventListener("pointerdown", this._keyHandler);
