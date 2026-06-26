@@ -58,18 +58,11 @@ class Game {
     this.onBeat      = null;  // () => void
     this.onBpmChange = null;  // (bpm) => void
     this.onHint      = null;  // (text|null) => void  — tutorial guidance
-    this.onWordState = null;  // (state) => void  — word-mode typing display
-
-    // Input mode: "note" (one assigned key per note) or "word" (type words;
-    // each romaji letter fires the next note). Tutorial songs force "note".
-    this.mode       = "note";
-    this.wordUnits  = null;
-    this.noteChars  = null;
 
     this._keyHandler = this._handleKey.bind(this);
   }
 
-  load(song, mode = "note") {
+  load(song) {
     this.song       = song;
     this.events     = song.events;
     this.cursor     = 0;
@@ -81,42 +74,13 @@ class Game {
     this.missStreak  = 0;
     // Tutorial = plain piano only: no drums / bass / strings / brass layers.
     this.maxLayer    = song.tutorial ? 0 : 3;
-    // Tutorial is finger-position training — always note-mode.
-    this.mode        = song.tutorial ? "note" : mode;
-    this._buildWordStream();
     this._assignKeys();
-    if (this.effects.setMode) this.effects.setMode(this.mode);
     clearTimeout(this._autoTimer);
-  }
-
-  // Word-mode: build a stream of words covering every note (one letter/note).
-  _buildWordStream() {
-    this.wordUnits = null;
-    this.noteChars = null;
-    if (this.mode !== "word" || typeof buildWordStream !== "function") return;
-    const r = buildWordStream(this.events.length);
-    this.wordUnits = r.units;
-    this.noteChars = r.noteChars;
-  }
-
-  // Which word unit + how many of its letters are typed at note `cursor`.
-  _wordStateAt(cursor) {
-    const units = this.wordUnits;
-    let idx = 0;
-    for (let i = 0; i < units.length; i++) {
-      if (cursor >= units[i].startNote) idx = i; else break;
-    }
-    return { units, idx, typed: cursor - units[idx].startNote };
   }
 
   // Deterministically map each distinct pitch to a key.
   // Most-used pitches get the easiest keys (home row first).
-  // Word-mode: each note's key is the next romaji letter to type.
   _assignKeys() {
-    if (this.mode === "word" && this.noteChars) {
-      this.events.forEach((e, i) => { e.key = (this.noteChars[i] || "").toUpperCase(); });
-      return;
-    }
     const counts = {};
     this.events.forEach((e) => {
       const p = e.notes[0];
@@ -186,10 +150,6 @@ class Game {
         this.events.slice(this.cursor, this.cursor + 5).map((e) => ({ key: e.key, notes: e.notes }))
       );
       if (this.onHint && ev.hint !== undefined) this.onHint(ev.hint || null);
-      // Word-mode: refresh the typed-words display.
-      if (this.mode === "word" && this.onWordState && this.wordUnits) {
-        this.onWordState(this._wordStateAt(this.cursor));
-      }
     }
 
     if (this.autoAdvance) {
