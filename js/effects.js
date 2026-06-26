@@ -193,6 +193,8 @@ class EffectsEngine {
   }
 
   showRating(text) {
+    const hue  = text === "FAST!" ? 130 : text === "PERFECT" ? 45 : 190;
+    const size = text === "FAST!" ? 34 : 30;
     this.floaters.push({
       text,
       x: this.canvas.width / 2,
@@ -200,8 +202,8 @@ class EffectsEngine {
       alpha: 1,
       vy: -1.8,
       decay: 0.026,
-      hue: text === "PERFECT" ? 45 : 190,
-      size: 30,
+      hue,
+      size,
     });
   }
 

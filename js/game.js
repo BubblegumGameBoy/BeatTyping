@@ -155,13 +155,16 @@ class Game {
       : 1;
 
     if (key === target) {
-      // Correct key — but did they wait for the beat?
-      if (!pointer && progress < this.EARLY_OK) return;  // too early: ignore
-      const rating = progress >= this.PERFECT ? "PERFECT" : "GOOD";
+      // Correct key — play immediately so the music follows the player's pace.
+      // Early input is welcome and earns a bonus.
+      let rating, bonus;
+      if (progress < this.EARLY_OK)        { rating = "FAST!";   bonus = 1; }
+      else if (progress >= this.PERFECT)   { rating = "PERFECT"; bonus = 1; }
+      else                                 { rating = "GOOD";    bonus = 0; }
       this.effects.showRating(rating);
       this.missStreak = 0;
       clearTimeout(this._autoTimer);
-      this._playNext(true);
+      this._playNext(true, bonus);
       if (this.autoAdvance && this.active) this._reschedule();
     } else {
       // Wrong key — flash; break combo only after 3 consecutive misses.
@@ -174,22 +177,22 @@ class Game {
     }
   }
 
-  // Update combo + derived layer. hit=true increments, hit=false resets.
-  _applyCombo(hit) {
+  // Update combo + derived layer. hit=true increments (+bonus), hit=false resets.
+  _applyCombo(hit, bonus = 0) {
     const prev = this.layer;
-    if (hit) this.combo++; else this.combo = 0;
+    if (hit) this.combo += 1 + bonus; else this.combo = 0;
     this.layer = this.combo >= 20 ? 2 : this.combo >= 8 ? 1 : 0;
     if (this.layer !== prev) this.effects.setLayer(this.layer, this.combo, hit);
     this.effects.combo = this.combo;
     this.effects.layer = this.layer;
   }
 
-  _playNext(isManual) {
+  _playNext(isManual, bonus = 0) {
     if (this.cursor >= this.events.length) return;
 
     const event = this.events[this.cursor];
     if (isManual) {
-      this._applyCombo(true);
+      this._applyCombo(true, bonus);
     } else {
       // Auto-advance counts as a miss; combo only breaks after 3 in a row.
       this.missStreak++;
