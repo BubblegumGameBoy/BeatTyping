@@ -22,9 +22,11 @@ function buildSongList() {
   const list = document.getElementById("song-list");
   list.innerHTML = "";
   SONGS.filter(s => !s.id.startsWith("_")).forEach(song => {
-    const levelClass = song.level === 1 ? "beginner" : "advanced";
-    const levelText  = song.level === 1 ? "初級" : "上級";
-    const desc = song.level === 1
+    const levelClass = song.level === 0 ? "tutorial" : song.level === 1 ? "beginner" : "advanced";
+    const levelText  = song.level === 0 ? "練習" : song.level === 1 ? "初級" : "上級";
+    const desc = song.level === 0
+      ? "ホームポジションを覚えよう"
+      : song.level === 1
       ? "ホームポジションで弾けます"
       : "テンポが速め・応用向け";
 
@@ -55,6 +57,7 @@ async function selectSong(song) {
   }
 
   game.load(song);
+  if (game.onHint) game.onHint(song.tutorial ? "準備OK！最初のタイルを待ってね" : null);
   document.getElementById("song-name-display").textContent =
     `${song.title}  ／  ${song.composer}`;
   document.getElementById("bpm-display").textContent = game.bpm;
@@ -87,6 +90,15 @@ window.addEventListener("DOMContentLoaded", () => {
 
   game.onProgress = setProgress;
   game.onComplete = showComplete;
+
+  // Tutorial hint text in the footer
+  const keyHintEl = document.querySelector(".key-hint");
+  const DEFAULT_HINT = keyHintEl ? keyHintEl.textContent : "";
+  game.onHint = (text) => {
+    if (!keyHintEl) return;
+    keyHintEl.textContent = text || DEFAULT_HINT;
+    keyHintEl.classList.toggle("tutorial-hint", !!text);
+  };
 
   buildSongList();
 

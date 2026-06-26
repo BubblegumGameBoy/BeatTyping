@@ -49,6 +49,7 @@ class Game {
     this.onComplete  = null;  // () => void
     this.onBeat      = null;  // () => void
     this.onBpmChange = null;  // (bpm) => void
+    this.onHint      = null;  // (text|null) => void  — tutorial guidance
 
     this._keyHandler = this._handleKey.bind(this);
   }
@@ -127,6 +128,7 @@ class Game {
       this.effects.setQueue(
         this.events.slice(this.cursor, this.cursor + 5).map((e) => ({ key: e.key, notes: e.notes }))
       );
+      if (this.onHint && ev.hint !== undefined) this.onHint(ev.hint || null);
     }
 
     this._autoTimer = setTimeout(() => {

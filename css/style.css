@@ -84,6 +84,7 @@ html, body {
   font-size: .65rem; font-weight: 600; letter-spacing: .05em;
   padding: 2px 8px; border-radius: 10px; white-space: nowrap; flex-shrink: 0;
 }
+.level-badge.tutorial { background: rgba(123,111,208,.20); color: #a99cff; border: 1px solid rgba(123,111,208,.40); }
 .level-badge.beginner { background: rgba(48,176,69,.18); color: #52d46a; border: 1px solid rgba(48,176,69,.35); }
 .level-badge.advanced  { background: rgba(200,168,75,.18); color: var(--accent); border: 1px solid rgba(200,168,75,.35); }
 .song-card-composer { font-size: .76rem; color: var(--muted); }
@@ -146,6 +147,10 @@ html, body {
   border-top: 1px solid var(--border);
 }
 .key-hint { font-size: .78rem; color: var(--muted); letter-spacing: .1em; animation: pulse 2s ease-in-out infinite; }
+.key-hint.tutorial-hint {
+  color: #a99cff; font-size: .9rem; letter-spacing: .04em; animation: none;
+  font-weight: 500;
+}
 @keyframes pulse { 0%,100%{opacity:.45} 50%{opacity:1} }
 
 /* ─── Buttons ──────────────────────────────────────────────────────────────── */
