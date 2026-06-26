@@ -22,6 +22,7 @@ python3 -m http.server 8000
 | `index.html` | 画面構造（タイトル / プレイ / 完了 / ホームポジション overlay） |
 | `css/style.css` | スタイル |
 | `js/songs.js` | **曲データ**（音符・伴奏・ヒント）。`SONGS` 配列 |
+| `js/words.js` | 単語入力モードの語彙（`WORD_LIST`＝かな＋ローマ字）と `buildWordStream()` |
 | `js/audio.js` | Tone.js ラッパ。ピアノ(Salamander) + オーケストラ(violin/cello/french-horn)。Tone.Transport の steady backing clock |
 | `js/effects.js` | Canvas 2D の演出（落下タイル・鍵盤・指の色分け） |
 | `js/game.js` | ゲームロジック（キー割り当て・コンボ・レイヤー判定）。**wait-mode**: 既定で `autoAdvance=false`、正しいキーが押されるまで現在の音符は待機（速度プレッシャー無し・自動miss無し）。`true` で旧テンポ駆動の自動前進に戻せる |
@@ -51,6 +52,19 @@ python3 -m http.server 8000
   なのでヒントでは文字キー名ではなく「光ったキーを表示の指で押す」と指の習慣を教える。
 - レイヤー: combo≥8 で +cello+drums、≥20 で +violin、≥36 で +french horn。
   tutorial 曲は `maxLayer=0` で純ピアノ。
+
+## 演奏モード（note / word）
+
+タイトル画面のトグルで切替（練習曲は常に note 固定）。`game.mode` が保持。
+
+- **note（1音ずつ）**: 各音にキーを1つ割当（出現頻度順にホームポジションから）。落下タイル＋
+  指キーボード UI。指の練習向け。
+- **word（単語入力）**: `words.js` の単語列を曲の音符数だけ並べ、**ローマ字1文字＝1音**。
+  `ねこ`=`NEKO` の4打で4音が連続で鳴る。タイピングゲーム的に滑らかに打てるので、速い曲でも
+  追従しやすい。UI は1音ずつのタイルではなく**単語表示**（`#typing-area` DOM、打鍵済み/現在/残りを色分け
+  ＋次単語プレビュー）。落下タイルと指キーボードは非表示、ピアノは点灯。
+- どちらも **wait-mode**（正しいキーを押すまで待機）で共通。旋律（`notes` の並び）は同一で、
+  入力方法と UI だけが違う。
 
 ## 楽曲の音程を「正しく」直すワークフロー — 公式 MIDI から起こす
 
