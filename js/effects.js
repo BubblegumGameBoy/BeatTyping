@@ -97,6 +97,20 @@ function _hexRgba(hex, alpha) {
   return `rgba(${r},${g},${b},${alpha})`;
 }
 
+// Approximate hue from hex color for particle coloring
+function _colorToHue(hex) {
+  const r = parseInt(hex.slice(1, 3), 16) / 255;
+  const g = parseInt(hex.slice(3, 5), 16) / 255;
+  const b = parseInt(hex.slice(5, 7), 16) / 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  if (max === min) return 0;
+  let h;
+  if (max === r)      h = (g - b) / (max - min) * 60;
+  else if (max === g) h = (2 + (b - r) / (max - min)) * 60;
+  else                h = (4 + (r - g) / (max - min)) * 60;
+  return (h + 360) % 360;
+}
+
 // ─── EffectsEngine ────────────────────────────────────────────────────────────
 
 class EffectsEngine {
@@ -106,6 +120,7 @@ class EffectsEngine {
 
     this.particles  = [];
     this.floaters   = [];
+    this.shockwaves = [];
     this.pianoGlow  = {};
     this.bgFlash    = 0;
     this.errorFlash = 0;
@@ -193,21 +208,27 @@ class EffectsEngine {
   trigger(notes) {
     if (!notes || notes.length === 0) return;
 
+    const key = this.fallingTile?.key;
     if (this.fallingTile && !this.fallingTile.hit) {
       this.fallingTile.hit     = true;
       this.fallingTile.hitTime = performance.now();
     }
 
-    const cx   = this.canvas.width / 2;
-    const hitY = this._hitZoneY();
+    const cx    = this.canvas.width / 2;
+    const hitY  = this._hitZoneY();
+    const finger = FINGER_MAP[key] ?? 4;
+    const color  = FINGER_COLORS[finger];
 
-    notes.forEach((note) => {
-      const kx = pianoNoteX(note, this.canvas.width) ?? cx;
-      this._burst(kx, hitY, noteHue(note));
-      this.pianoGlow[note] = 1.0;
-    });
+    // Big tile shatter burst at hit zone center (finger color)
+    this._tileShatter(cx, hitY, color);
 
-    this.bgFlash = 0.12;
+    // Shockwave ring
+    this.shockwaves.push({ x: cx, y: hitY, r: 12, alpha: 0.85, color });
+
+    // Piano key glow
+    notes.forEach((note) => { this.pianoGlow[note] = 1.0; });
+
+    this.bgFlash = 0.18;
   }
 
   setLayer(newLayer, combo, wasManual) {
@@ -263,6 +284,7 @@ class EffectsEngine {
   _update() {
     this.particles = this.particles.filter((p) => {
       p.x  += p.vx;  p.y += p.vy;  p.vy += 0.22;
+      if (p.rotV) p.rot += p.rotV;
       p.alpha -= p.decay;
       return p.alpha > 0;
     });
@@ -280,6 +302,12 @@ class EffectsEngine {
     if (this.bgFlash    > 0) this.bgFlash    -= 0.01;
     if (this.errorFlash > 0) this.errorFlash -= 0.06;
 
+    this.shockwaves = this.shockwaves.filter((s) => {
+      s.r    += (LANE_W_HIT * 0.85 - s.r) * 0.14;
+      s.alpha -= 0.055;
+      return s.alpha > 0;
+    });
+
     if (this.layerBanner) {
       this.layerBanner.ticks--;
       if (this.layerBanner.ticks < 40) {
@@ -293,8 +321,47 @@ class EffectsEngine {
     }
   }
 
+  // Shatter effect: tile breaks into colored square fragments + round sparks
+  _tileShatter(x, y, color) {
+    const hue = _colorToHue(color);
+    // Square tile fragments
+    const frags = 10 + Math.floor(Math.random() * 6);
+    for (let i = 0; i < frags; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 3 + Math.random() * 8;
+      const size  = 5 + Math.random() * 10;
+      this.particles.push({
+        x: x + (Math.random() - 0.5) * 40,
+        y: y + (Math.random() - 0.5) * 20,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed - 3,
+        r: size,
+        hue: hue + (Math.random() - 0.5) * 30,
+        alpha: 1,
+        decay: 0.028 + Math.random() * 0.02,
+        square: true,
+        rot: Math.random() * Math.PI,
+        rotV: (Math.random() - 0.5) * 0.25,
+      });
+    }
+    // Bright sparks
+    for (let i = 0; i < 18; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 4 + Math.random() * 9;
+      this.particles.push({
+        x, y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed - 4,
+        r: 1.5 + Math.random() * 2.5,
+        hue: hue + (Math.random() - 0.5) * 50,
+        alpha: 1,
+        decay: 0.030 + Math.random() * 0.025,
+      });
+    }
+  }
+
   _burst(x, y, hue) {
-    const count = 12 + Math.floor(Math.random() * 8);
+    const count = 10 + Math.floor(Math.random() * 6);
     for (let i = 0; i < count; i++) {
       const angle = Math.random() * Math.PI * 2;
       const speed = 2 + Math.random() * 5;
@@ -343,16 +410,36 @@ class EffectsEngine {
 
     this._drawHitZone();
 
+    // Shockwave rings
+    this.shockwaves.forEach((s) => {
+      ctx.save();
+      ctx.globalAlpha = s.alpha;
+      ctx.strokeStyle = s.color;
+      ctx.lineWidth   = 3;
+      ctx.shadowBlur  = 16;
+      ctx.shadowColor = s.color;
+      ctx.beginPath();
+      ctx.ellipse(s.x, s.y, s.r, s.r * 0.32, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    });
+
     // Particles
     this.particles.forEach((p) => {
       ctx.save();
       ctx.globalAlpha = p.alpha;
-      ctx.fillStyle   = `hsl(${p.hue},90%,70%)`;
-      ctx.shadowBlur  = 6;
-      ctx.shadowColor = `hsl(${p.hue},90%,70%)`;
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.fillStyle   = `hsl(${p.hue},90%,72%)`;
+      ctx.shadowBlur  = 8;
+      ctx.shadowColor = `hsl(${p.hue},90%,65%)`;
+      if (p.square) {
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rot || 0);
+        ctx.fillRect(-p.r / 2, -p.r / 2, p.r, p.r);
+      } else {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fill();
+      }
       ctx.restore();
     });
 

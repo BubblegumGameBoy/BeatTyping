@@ -35,8 +35,9 @@ class Game {
     this._noteMs    = 0;
 
     // Layer system: 0 = melody only, 1 = +drums+bass, 2 = +pad
-    this.combo = 0;
-    this.layer = 0;
+    this.combo      = 0;
+    this.layer      = 0;
+    this.missStreak = 0; // consecutive misses; combo resets only at 3
 
     // Timing windows (as fraction of the tile's fall)
     this.EARLY_OK = 0.45;  // before this it's "too early" — ignored
@@ -58,9 +59,10 @@ class Game {
     this.cursor     = 0;
     this.textCursor = 0;
     this.bpm        = song.bpm ?? 120;
-    this.active     = false;
-    this.combo      = 0;
-    this.layer      = 0;
+    this.active      = false;
+    this.combo       = 0;
+    this.layer       = 0;
+    this.missStreak  = 0;
     this._assignKeys();
     clearTimeout(this._autoTimer);
   }
@@ -91,9 +93,10 @@ class Game {
     if (!this.song) return;
     this.cursor     = 0;
     this.textCursor = 0;
-    this.combo      = 0;
-    this.layer      = 0;
-    this.active     = true;
+    this.combo       = 0;
+    this.layer       = 0;
+    this.missStreak  = 0;
+    this.active      = true;
     this.audio.initDrumsAndPad();
     document.addEventListener("keydown",     this._keyHandler);
     document.addEventListener("pointerdown", this._keyHandler);
@@ -156,13 +159,18 @@ class Game {
       if (!pointer && progress < this.EARLY_OK) return;  // too early: ignore
       const rating = progress >= this.PERFECT ? "PERFECT" : "GOOD";
       this.effects.showRating(rating);
+      this.missStreak = 0;
       clearTimeout(this._autoTimer);
       this._playNext(true);
       if (this.autoAdvance && this.active) this._reschedule();
     } else {
-      // Wrong key — typo. Break combo, flash, don't advance.
-      this._applyCombo(false);
+      // Wrong key — flash; break combo only after 3 consecutive misses.
+      this.missStreak++;
       this.effects.flashError();
+      if (this.missStreak >= 3) {
+        this._applyCombo(false);
+        this.missStreak = 0;
+      }
     }
   }
 
@@ -180,7 +188,16 @@ class Game {
     if (this.cursor >= this.events.length) return;
 
     const event = this.events[this.cursor];
-    this._applyCombo(isManual);
+    if (isManual) {
+      this._applyCombo(true);
+    } else {
+      // Auto-advance counts as a miss; combo only breaks after 3 in a row.
+      this.missStreak++;
+      if (this.missStreak >= 3) {
+        this._applyCombo(false);
+        this.missStreak = 0;
+      }
+    }
 
     // Melody — always plays
     this.audio.playNotes(event.notes, 0.85, 1.8);
