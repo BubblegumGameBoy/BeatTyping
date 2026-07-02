@@ -10,9 +10,11 @@ const SONGS = [
     level: 0,
     tutorial: true,
     bpm: 60,
+    meter: 4,
     // ハ長調・メロディー譜どおり。小学生が弾く音域に合わせて
     // 真ん中のド(ド=C4)始まり・出だしのソ=G3。伴奏(accomp)は
-    // tutorial では鳴らさない (game.js の maxLayer=0)。
+    // 弱いピアノ左手として鳴る。オーケストラのレイヤーは tutorial
+    // では付かない (game.js の maxLayer=0)。
     // キー割り当ては出現頻度順に自動決定されるので、ヒントでは
     // 文字キー名ではなく「光ったキーを表示の指で」と指の習慣を教える。
     events: [
@@ -154,6 +156,7 @@ const SONGS = [
     composer: "L.v. ベートーヴェン",
     level: 1,
     bpm: 72,
+    meter: 3,  // 原曲は 3/8 — バッキングはワルツ型 (4/4 ビートだと合わない)
     events: [
       // ===== A Section 1 =====
       // phrase 1a
@@ -338,7 +341,8 @@ const SONGS = [
     title: "トルコ行進曲",
     composer: "W.A. モーツァルト",
     level: 2,
-    bpm: 60,
+    bpm: 104,   // バッキングのグルーヴ速度 (wait-mode ではプレイヤーを急かさない)
+    meter: 2,   // 原曲は 2/4 — マーチ型バッキング
     events: [
       // ===== A Section — Rondo 主題 (イ短調) =====
       {notes:["B4"], accomp:[]},

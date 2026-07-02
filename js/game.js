@@ -41,6 +41,10 @@ class Game {
     this._noteStart = 0;
     this._noteMs    = 0;
 
+    // Time of the previous correct hit — drives the touch dynamics
+    // (fast runs play lighter & shorter, held notes sing out).
+    this._lastHitAt = 0;
+
     // Layer system: 0 = melody only, 1 = +drums+bass, 2 = +pad
     this.combo      = 0;
     this.layer      = 0;
@@ -72,7 +76,9 @@ class Game {
     this.combo       = 0;
     this.layer       = 0;
     this.missStreak  = 0;
+    this._lastHitAt  = 0;
     // Tutorial = plain piano only: no drums / bass / strings / brass layers.
+    // (The soft left-hand piano accompaniment still sounds — it's piano.)
     this.maxLayer    = song.tutorial ? 0 : 3;
     this._assignKeys();
     clearTimeout(this._autoTimer);
@@ -108,12 +114,14 @@ class Game {
     this.combo       = 0;
     this.layer       = 0;
     this.missStreak  = 0;
+    this._lastHitAt  = 0;
     this.active      = true;
     this.audio.initDrumsAndPad();
     // Steady rhythm-section clock (silent until combo reaches layer 1).
+    // The groove pattern follows the song's meter (4/4, 3/4 or 2/4).
     this.audio.setBackingChord(null);
     this.audio.setBackingLayer(0);
-    this.audio.startBacking(this.bpm);
+    this.audio.startBacking(this.bpm, this.song.meter ?? 4);
     document.addEventListener("keydown",     this._keyHandler);
     document.addEventListener("pointerdown", this._keyHandler);
     this._reschedule();  // present the first note (waits for input in wait-mode)
@@ -239,17 +247,33 @@ class Game {
       // Auto-advance (miss): dismiss tile silently, no audio.
       this.effects.dismissTile();
     } else {
-      // ── Correct hit: sound the melody note(s) only. The rhythm section
-      //    (drums / bass / strings / brass) plays on the steady backing
-      //    clock in the audio engine — here we just tell it which chord
-      //    the player is currently on so the harmony follows along.
-      this.audio.playNotes(event.notes, 0.85, 1.8);
-      this.effects.trigger(event.notes);
+      // ── Correct hit: the piano follows the player's hands.
+      //    Touch dynamics: the gap since the previous hit shapes velocity
+      //    and sustain, so fast runs stay light and articulate instead of
+      //    stacking thirty fortissimo notes into mud, while slow, held
+      //    notes ring out. Harmony-change notes get a gentle accent.
+      const now = performance.now();
+      const gap = this._lastHitAt ? now - this._lastHitAt : 600;
+      this._lastHitAt = now;
+      const t = Math.max(0, Math.min(1, (gap - 130) / 570)); // 130ms → 700ms
 
       const accomp = event.accomp || [];
+      let vel = 0.64 + t * 0.18
+              + (accomp.length ? 0.06 : 0)
+              + (Math.random() - 0.5) * 0.04;   // humanize
+      vel = Math.max(0.5, Math.min(0.92, vel));
+      const dur = 0.5 + t * 1.3;
+
+      this.audio.playNotes(event.notes, vel, dur);
+      this.effects.trigger(event.notes);
+
       if (accomp.length > 0) {
+        // Left hand: a soft piano voicing sounds on every harmony change —
+        // this is what makes it feel like two-handed playing. The orchestral
+        // backing follows the same chord on its own steady clock.
+        const voiced = this.audio.playAccomp(accomp, 0.3, Math.max(1.4, dur));
         this.audio.setBackingChord(accomp);
-        this.effects.triggerAccomp(accomp);
+        this.effects.triggerAccomp(voiced.length ? voiced : accomp);
       }
     }
 

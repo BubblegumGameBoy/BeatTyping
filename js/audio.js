@@ -1,3 +1,13 @@
+// ─── Pitch helpers ─────────────────────────────────────────────────────────
+const PC_INDEX = { C:0, "C#":1, D:2, "D#":3, E:4, F:5, "F#":6, G:7, "G#":8, A:9, "A#":10, B:11 };
+
+function pcOf(note)   { return note.match(/^[A-G]#?/)?.[0] ?? "C"; }
+function midiOf(note) {
+  const pc  = pcOf(note);
+  const oct = parseInt(note.slice(pc.length), 10);
+  return (isNaN(oct) ? 4 : oct) * 12 + PC_INDEX[pc];
+}
+
 class AudioEngine {
   constructor() {
     this.sampler = null;
@@ -22,6 +32,17 @@ class AudioEngine {
     this._backingId    = null;   // scheduleRepeat id
     this.backingLayer  = 0;      // 0 = silent, grows with combo layer
     this.backingChord  = null;   // current harmony (root first)
+    this._stepsPerBar  = 8;      // 8 = 4/4 pop, 6 = 3/4 waltz, 4 = 2/4 march
+
+    // String pad currently sustaining (so we can release it the moment the
+    // harmony moves instead of letting a stale chord ring against the player)
+    this._padNotes = null;
+    this._padSetAt = 0;
+
+    // Piano re-strike bookkeeping: note → time of its latest attack.
+    // Repeating a key damps the still-ringing previous strike (like a real
+    // hammer re-strike), and the deferred note-off skips superseded strikes.
+    this._pianoAttacks = new Map();
   }
 
   async init() {
@@ -68,6 +89,7 @@ class AudioEngine {
           C8:    "C8.mp3",
         },
         baseUrl: "https://tonejs.github.io/audio/salamander/",
+        release: 0.5,  // damper fall on note-off (default 0.1 cuts too hard)
         onload: () => {
           this.ready = true;
           this._loading = false;
@@ -101,7 +123,6 @@ class AudioEngine {
     }).connect(drumVerb).toDestination();
 
     this.hihat = new Tone.MetalSynth({
-      frequency: 400,
       envelope: { attack: 0.001, decay: 0.04, sustain: 0, release: 0.01 },
       harmonicity: 5.1, modulationIndex: 32, resonance: 4000, octaves: 1.5,
     }).connect(drumVerb).toDestination();
@@ -128,7 +149,7 @@ class AudioEngine {
       },
       baseUrl: ORCH + "cello/",
       release: 0.9,
-      volume: -13,
+      volume: -12,
     }).connect(stringVerb).toDestination();
 
     // French horn — warm brass stabs for the orchestral peak
@@ -139,7 +160,7 @@ class AudioEngine {
       },
       baseUrl: ORCH + "french-horn/",
       release: 0.6,
-      volume: -18,
+      volume: -17,
     }).connect(brassVerb).toDestination();
 
     this.drumsReady    = true;
@@ -150,12 +171,14 @@ class AudioEngine {
   // Start the steady rhythm section. Safe to call before the orchestral
   // samples finish loading: the per-tick callback no-ops until they are
   // ready and the layer is ≥ 1.
-  startBacking(bpm = 120) {
+  // meter: 4 = 4/4 pop, 3 = 3/4 waltz, 2 = 2/4 march (step = eighth note).
+  startBacking(bpm = 120, meter = 4) {
+    this._stepsPerBar = meter === 3 ? 6 : meter === 2 ? 4 : 8;
     if (this._backingId !== null) { this.setBackingBpm(bpm); return; }
     Tone.Transport.bpm.value = bpm;
     let step = 0;
     this._backingId = Tone.Transport.scheduleRepeat((time) => {
-      this._backingTick(step % 8, time); // 8 eighth-notes = one 4/4 bar
+      this._backingTick(step % this._stepsPerBar, time);
       step++;
     }, "8n");
     Tone.Transport.start();
@@ -170,68 +193,204 @@ class AudioEngine {
     Tone.Transport.position = 0;
     this.backingLayer = 0;
     this.backingChord = null;
+    this._clearPad(Tone.immediate());
+    if (this.strings) { try { this.strings.releaseAll(); } catch (e) {} }
   }
 
-  setBackingBpm(bpm)     { Tone.Transport.bpm.value = bpm; }
-  setBackingLayer(layer) { this.backingLayer = layer; }
-  setBackingChord(notes) { if (notes && notes.length) this.backingChord = notes; }
+  setBackingBpm(bpm) { Tone.Transport.bpm.value = bpm; }
 
-  // Re-voice a chord into a single octave so the violin / horn samplers stay
-  // in their recorded range (no extreme pitch-shifting = no mud).
-  _chordInOctave(chord, oct) {
-    const seen = new Set(), out = [];
+  setBackingLayer(layer) {
+    const prev = this.backingLayer;
+    this.backingLayer = layer;
+    // Pad enters/leaves with layer 2 — voice or silence it right away.
+    if (layer >= 2 && prev < 2 && this.backingChord) this._setPad(Tone.immediate());
+    if (layer < 2 && prev >= 2) this._clearPad(Tone.immediate());
+  }
+
+  setBackingChord(notes) {
+    if (!notes || !notes.length) return;
+    const changed = !this.backingChord || notes.join() !== this.backingChord.join();
+    this.backingChord = notes;
+    // Re-voice the string pad the moment the harmony moves, so it never
+    // sustains a stale chord against the player's new notes.
+    if (changed && this.backingLayer >= 2) this._setPad(Tone.immediate());
+  }
+
+  // Seconds in one bar of the current backing groove (one step = an eighth).
+  _barSeconds() {
+    const bpm = Tone.Transport.bpm.value || 120;
+    return (30 / bpm) * this._stepsPerBar;
+  }
+
+  // Stack a chord's pitch classes in ascending order from a base octave,
+  // preserving the written root/voice order (root first). Keeps the violin /
+  // horn samplers in their recorded range without collapsing inversions.
+  _stack(chord, baseOct, maxNotes = 3) {
+    const pcs = [];
     chord.forEach((n) => {
-      const m = n.match(/^([A-G]#?)/);
-      if (!m) return;
-      const name = m[1] + oct;
-      if (!seen.has(name)) { seen.add(name); out.push(name); }
+      const m = n.match(/^[A-G]#?/);
+      if (m && !pcs.includes(m[0])) pcs.push(m[0]);
+    });
+    const out = [];
+    let prev = -1;
+    pcs.slice(0, maxNotes).forEach((pc) => {
+      let oct = baseOct;
+      while (midiOf(pc + oct) <= prev) oct++;
+      prev = midiOf(pc + oct);
+      out.push(pc + oct);
     });
     return out;
   }
 
-  // One eighth-note of the backing pattern. pos = 0..7 within the bar.
+  // Horn voicing: root + fifth (classic horn fifths — stays clean in the low
+  // register where a full close triad would turn to mud).
+  _brassVoicing(chord) {
+    if (!chord || !chord.length) return [];
+    const fifth = chord.length >= 3 ? chord[2] : chord[1];
+    return this._stack(fifth ? [chord[0], fifth] : [chord[0]], 3, 2);
+  }
+
+  // (Re)voice the sustained string pad on the current chord. force=false is
+  // the once-a-bar re-bow — skipped if the pad was just voiced by a change.
+  _setPad(time, force = true) {
+    if (!this.strings || !this.strings.loaded || !this.backingChord) return;
+    if (!force && time - this._padSetAt < this._barSeconds() * 0.5) return;
+    const notes = this._stack(this.backingChord, 4, 3);
+    if (!notes.length) return;
+    try {
+      if (this._padNotes) this.strings.triggerRelease(this._padNotes, time);
+      this.strings.triggerAttack(notes, time, this.backingLayer >= 3 ? 0.48 : 0.38);
+      this._padNotes = notes;
+      this._padSetAt = time;
+    } catch (e) {}
+  }
+
+  _clearPad(time) {
+    if (this._padNotes && this.strings) {
+      try { this.strings.triggerRelease(this._padNotes, time); } catch (e) {}
+      this._padNotes = null;
+    }
+  }
+
+  // One eighth-note of the backing pattern. pos = 0..stepsPerBar-1.
   _backingTick(pos, time) {
     const L = this.backingLayer;
     if (L < 1 || !this.drumsReady) return;
     const chord = this.backingChord;
-    const down  = (pos === 0 || pos === 4); // beats 1 & 3
+    const spb   = this._stepsPerBar;
 
-    // ── Percussion ──
-    if (down) this.kick.triggerAttackRelease("C1", "8n", time, 0.5);
-    if (L >= 2 && (pos === 2 || pos === 6)) this.snare.triggerAttackRelease("8n", time, 0.36);
-    if (pos % 2 === 0) {
-      const hh = (L >= 3 ? 0.26 : 0.18);
-      this.hihat.triggerAttackRelease("32n", time, pos % 4 === 0 ? hh : hh * 0.7);
+    // Strong beats: 4/4 → 1 & 3, 3/4 → 1, 2/4 → 1 & 2
+    const strong = spb === 6 ? pos === 0
+                 : spb === 4 ? (pos === 0 || pos === 2)
+                 :             (pos === 0 || pos === 4);
+
+    // ── Percussion (pattern follows the song's meter) ──
+    if (spb === 6) {
+      // Waltz: soft kick on 1, brushed "chick-chick" on beats 2 & 3
+      if (pos === 0) this.kick.triggerAttackRelease("C1", "8n", time, 0.4);
+      if (pos === 2 || pos === 4) {
+        if (L >= 2) this.snare.triggerAttackRelease("16n", time, 0.13);
+        this.hihat.triggerAttackRelease(320, "32n", time, L >= 3 ? 0.2 : 0.14);
+      }
+    } else if (spb === 4) {
+      // March: kick on 1, snare on 2, hats every eighth
+      if (pos === 0) this.kick.triggerAttackRelease("C1", "8n", time, 0.5);
+      if (L >= 2 && pos === 2) this.snare.triggerAttackRelease("8n", time, 0.32);
+      const hh = L >= 3 ? 0.24 : 0.16;
+      this.hihat.triggerAttackRelease(320, "32n", time, pos % 2 === 0 ? hh : hh * 0.6);
+    } else {
+      // 4/4 pop
+      if (strong) this.kick.triggerAttackRelease("C1", "8n", time, 0.5);
+      if (L >= 2 && (pos === 2 || pos === 6)) this.snare.triggerAttackRelease("8n", time, 0.36);
+      if (pos % 2 === 0) {
+        const hh = L >= 3 ? 0.26 : 0.18;
+        this.hihat.triggerAttackRelease(320, "32n", time, pos % 4 === 0 ? hh : hh * 0.7);
+      }
     }
 
-    // ── Cello bass on the strong beats (root of the current chord) ──
-    if (chord && down && this.bass && this.bass.loaded) {
-      this.bass.triggerAttackRelease(chord[0], pos === 0 ? 1.0 : 0.6, time, 0.5);
+    if (!chord) return;
+
+    // ── Cello on the strong beats — chord root pinned into its recorded
+    //    range (song data writes roots down to G1, below the samples) ──
+    if (strong && this.bass && this.bass.loaded) {
+      const root = pcOf(chord[0]) + "2";
+      const hold = pos === 0 ? (spb === 6 ? 1.4 : 1.0) : 0.6;
+      this.bass.triggerAttackRelease(root, hold, time, 0.5);
     }
 
-    // ── Violin pad on the downbeat (layer 2+) ──
-    if (L >= 2 && pos === 0 && chord && this.strings && this.strings.loaded) {
-      const s = this._chordInOctave(chord, 4);
-      if (s.length) this.strings.triggerAttackRelease(s, 1.9, time, 0.4);
-    }
+    // ── Violin pad: re-bow once a bar so held harmonies don't decay away ──
+    if (L >= 2 && pos === 0) this._setPad(time, false);
 
-    // ── French-horn stabs on beats 1 & 3 (layer 3) ──
-    if (L >= 3 && down && chord && this.brass && this.brass.loaded) {
-      const b = this._chordInOctave(chord, 3);
+    // ── French-horn fifths on the strong beats (layer 3) ──
+    if (L >= 3 && strong && this.brass && this.brass.loaded) {
+      const b = this._brassVoicing(chord);
       if (b.length) this.brass.triggerAttackRelease(b, pos === 0 ? 0.5 : 0.3, time, pos === 0 ? 0.4 : 0.3);
     }
   }
 
+  // ── Piano (player-triggered) ─────────────────────────────────────────
+
+  // One piano note, scheduled with zero lookahead so the sound lands on the
+  // keystroke. Damps a still-ringing previous strike of the same pitch first
+  // (a real hammer re-strike), then defers a note-off that is skipped if the
+  // key has been re-struck since.
+  _strike(note, t, velocity, duration) {
+    try {
+      this.sampler.triggerRelease(note, t);
+      this.sampler.triggerAttack(note, t, velocity);
+      this._pianoAttacks.set(note, t);
+      setTimeout(() => {
+        if (!this.ready) return;
+        if (this._pianoAttacks.get(note) === t) {
+          try { this.sampler.triggerRelease(note, Tone.immediate()); } catch (e) {}
+          this._pianoAttacks.delete(note);
+        }
+      }, duration * 1000);
+    } catch (e) {}
+  }
+
   // Play a list of note strings simultaneously.
-  // velocity: 0–1 (default 0.85 for melody, use ~0.40 for accompaniment)
+  // velocity: 0–1 · duration: seconds of sustain before the damper falls
   playNotes(notes, velocity = 0.85, duration = 1.8) {
     if (!this.ready || !notes || notes.length === 0) return;
-    const now = Tone.now();
-    notes.forEach((note) => {
-      try {
-        this.sampler.triggerAttackRelease(note, duration, now, velocity);
-      } catch (e) {}
+    const t = Tone.immediate();
+    notes.forEach((note) => this._strike(note, t, velocity, duration));
+  }
+
+  // Soft left-hand piano chord under the melody. Re-voiced to a pianist's
+  // hand shape (low root, open upper voices) and given a slight low-to-high
+  // strum so it blooms instead of landing as a MIDI block chord.
+  // Returns the voiced notes actually played (for the piano-key glow).
+  playAccomp(notes, velocity = 0.3, duration = 1.7) {
+    if (!this.ready || !notes || notes.length === 0) return [];
+    const t = Tone.immediate();
+    const voiced = this._voiceLeftHand(notes);
+    voiced.forEach((note, i) => {
+      this._strike(note, t + i * 0.012, velocity, duration);
     });
+    return voiced;
+  }
+
+  // Left-hand voicing: root at octave 2, remaining chord tones stacked
+  // ascending from octave 3. Written voicings that are already open
+  // (e.g. A2-E3-A3) pass through unchanged; close low triads like G1-B1-D2
+  // open up (G2-B3-D4) instead of rumbling.
+  _voiceLeftHand(chord) {
+    const pcs = [];
+    chord.forEach((n) => {
+      const m = n.match(/^[A-G]#?/);
+      if (m && !pcs.includes(m[0])) pcs.push(m[0]);
+    });
+    if (!pcs.length) return [];
+    const out = [pcs[0] + "2"];
+    let prev = -1;
+    for (let i = 1; i < pcs.length; i++) {
+      let oct = 3;
+      while (midiOf(pcs[i] + oct) <= prev) oct++;
+      prev = midiOf(pcs[i] + oct);
+      out.push(pcs[i] + oct);
+    }
+    return out;
   }
 
   playKick() {
@@ -246,7 +405,7 @@ class AudioEngine {
 
   playHihat(velocity = 0.45) {
     if (!this.drumsReady) return;
-    this.hihat.triggerAttackRelease("32n", Tone.now(), velocity);
+    this.hihat.triggerAttackRelease(320, "32n", Tone.now(), velocity);
   }
 
   // Sustained string chord (violin section).
